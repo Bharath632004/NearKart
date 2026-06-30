@@ -55,9 +55,14 @@ class _DeliveryEarningsScreenState
         if (dateStr.length >= 10) {
           final date = DateTime.tryParse(dateStr);
           if (date != null) {
-            final diff = now.difference(date).inDays;
-            if (diff == 0) today += earnings;
-            if (diff < 7) week += earnings;
+            // fix: use calendar-date comparison instead of inDays == 0
+            // to avoid off-by-one errors around midnight
+            if (date.year == now.year &&
+                date.month == now.month &&
+                date.day == now.day) {
+              today += earnings;
+            }
+            if (now.difference(date).inDays < 7) week += earnings;
           }
         }
       }

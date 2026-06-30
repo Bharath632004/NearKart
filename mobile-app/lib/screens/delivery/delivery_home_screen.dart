@@ -16,7 +16,8 @@ class DeliveryHomeScreen extends StatefulWidget {
 class _DeliveryHomeScreenState extends State<DeliveryHomeScreen> {
   int _currentTab = 0;
 
-  final List<Widget> _tabs = const [
+  // fix: removed `const` — these are StatefulWidgets that need initState to run
+  final List<Widget> _tabs = [
     _DashboardTab(),
     DeliveryEarningsScreen(),
     DeliveryProfileScreen(),
