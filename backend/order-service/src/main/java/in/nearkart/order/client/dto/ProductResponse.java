@@ -1,23 +1,27 @@
 package in.nearkart.order.client.dto;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class ProductResponse {
 
     private UUID id;
     private String name;
-    private String imageUrl;
+    private String description;
     private BigDecimal price;
+    private String imageUrl;
     private boolean available;
+    private Integer stockQuantity;
     private UUID shopId;
+    private String category;
+    private String unit;
 }

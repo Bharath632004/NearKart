@@ -1,51 +1,55 @@
 package in.nearkart.order.config;
 
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
-import org.springframework.kafka.support.converter.JsonMessageConverter;
-import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.support.serializer.JsonSerializer;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 public class KafkaConfig {
 
-    @Value("${nearkart.kafka.topics.order-placed}")
-    private String orderPlacedTopic;
+    @Value("${spring.kafka.bootstrap-servers:localhost:9092}")
+    private String bootstrapServers;
 
-    @Value("${nearkart.kafka.topics.order-status-changed}")
-    private String orderStatusChangedTopic;
+    @Bean
+    public ProducerFactory<String, Object> producerFactory() {
+        Map<String, Object> config = new HashMap<>();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        config.put(ProducerConfig.ACKS_CONFIG, "all");
+        config.put(ProducerConfig.RETRIES_CONFIG, 3);
+        config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        return new DefaultKafkaProducerFactory<>(config);
+    }
 
-    @Value("${nearkart.kafka.topics.order-cancelled}")
-    private String orderCancelledTopic;
+    @Bean
+    public KafkaTemplate<String, Object> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
+    }
 
     @Bean
     public NewTopic orderPlacedTopic() {
-        return TopicBuilder.name(orderPlacedTopic)
-                .partitions(3)
-                .replicas(1)
-                .build();
+        return TopicBuilder.name("order.placed").partitions(3).replicas(1).build();
     }
 
     @Bean
     public NewTopic orderStatusChangedTopic() {
-        return TopicBuilder.name(orderStatusChangedTopic)
-                .partitions(3)
-                .replicas(1)
-                .build();
+        return TopicBuilder.name("order.status.changed").partitions(3).replicas(1).build();
     }
 
     @Bean
     public NewTopic orderCancelledTopic() {
-        return TopicBuilder.name(orderCancelledTopic)
-                .partitions(3)
-                .replicas(1)
-                .build();
-    }
-
-    @Bean
-    public RecordMessageConverter converter() {
-        return new JsonMessageConverter();
+        return TopicBuilder.name("order.cancelled").partitions(3).replicas(1).build();
     }
 }

@@ -14,6 +14,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderCancelledEvent {
+
     private UUID orderId;
     private String orderNumber;
     private UUID customerId;

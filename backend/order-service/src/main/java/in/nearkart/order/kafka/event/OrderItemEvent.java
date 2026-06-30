@@ -13,8 +13,10 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderItemEvent {
+
     private UUID productId;
     private String productName;
     private Integer quantity;
     private BigDecimal unitPrice;
+    private BigDecimal totalPrice;
 }

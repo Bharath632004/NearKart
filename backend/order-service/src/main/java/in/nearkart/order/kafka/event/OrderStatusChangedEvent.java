@@ -13,12 +13,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OrderStatusChangedEvent {
+
     private UUID orderId;
     private String orderNumber;
     private UUID customerId;
     private UUID shopId;
     private String previousStatus;
     private String newStatus;
-    private String reason;
     private LocalDateTime changedAt;
 }

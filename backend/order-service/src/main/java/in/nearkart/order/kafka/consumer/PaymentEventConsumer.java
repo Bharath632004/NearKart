@@ -1,11 +1,8 @@
 package in.nearkart.order.kafka.consumer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import in.nearkart.order.entity.OrderStatus;
 import in.nearkart.order.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -18,35 +15,32 @@ import java.util.UUID;
 public class PaymentEventConsumer {
 
     private final OrderService orderService;
-    private final ObjectMapper objectMapper;
 
     @KafkaListener(
-            topics = "${nearkart.kafka.topics.payment-success}",
-            groupId = "${nearkart.kafka.consumer.group-id}"
+        topics = "${kafka.topics.payment-success:payment.success}",
+        groupId = "${spring.kafka.consumer.group-id:order-service-group}"
     )
-    public void onPaymentSuccess(ConsumerRecord<String, String> record) {
+    public void handlePaymentSuccess(Map<String, Object> event) {
         try {
-            Map<?, ?> payload = objectMapper.readValue(record.value(), Map.class);
-            UUID orderId = UUID.fromString((String) payload.get("orderId"));
+            UUID orderId = UUID.fromString((String) event.get("orderId"));
+            log.info("Payment success received for orderId={}", orderId);
             orderService.confirmOrderAfterPayment(orderId);
-            log.info("Payment success processed for orderId={}", orderId);
         } catch (Exception e) {
-            log.error("Error processing payment-success event: {}", e.getMessage(), e);
+            log.error("Error handling payment success event: {}", e.getMessage(), e);
         }
     }
 
     @KafkaListener(
-            topics = "${nearkart.kafka.topics.payment-failed}",
-            groupId = "${nearkart.kafka.consumer.group-id}"
+        topics = "${kafka.topics.payment-failed:payment.failed}",
+        groupId = "${spring.kafka.consumer.group-id:order-service-group}"
     )
-    public void onPaymentFailed(ConsumerRecord<String, String> record) {
+    public void handlePaymentFailed(Map<String, Object> event) {
         try {
-            Map<?, ?> payload = objectMapper.readValue(record.value(), Map.class);
-            UUID orderId = UUID.fromString((String) payload.get("orderId"));
+            UUID orderId = UUID.fromString((String) event.get("orderId"));
+            log.info("Payment failed received for orderId={}", orderId);
             orderService.cancelOrderOnPaymentFailure(orderId);
-            log.warn("Payment failed, order cancelled: orderId={}", orderId);
         } catch (Exception e) {
-            log.error("Error processing payment-failed event: {}", e.getMessage(), e);
+            log.error("Error handling payment failed event: {}", e.getMessage(), e);
         }
     }
 }

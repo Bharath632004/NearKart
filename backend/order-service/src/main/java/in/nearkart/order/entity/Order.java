@@ -7,6 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -85,4 +86,13 @@ public class Order {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void generateOrderNumber() {
+        if (this.orderNumber == null || this.orderNumber.isBlank()) {
+            String datePart = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            String randomPart = String.valueOf((int)(Math.random() * 900000) + 100000);
+            this.orderNumber = "ORD-" + datePart + "-" + randomPart;
+        }
+    }
 }

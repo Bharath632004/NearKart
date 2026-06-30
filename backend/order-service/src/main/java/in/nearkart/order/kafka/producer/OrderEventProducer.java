@@ -1,14 +1,13 @@
 package in.nearkart.order.kafka.producer;
 
-import in.nearkart.order.kafka.event.*;
+import in.nearkart.order.kafka.event.OrderCancelledEvent;
+import in.nearkart.order.kafka.event.OrderPlacedEvent;
+import in.nearkart.order.kafka.event.OrderStatusChangedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
-
-import java.util.concurrent.CompletableFuture;
 
 @Component
 @RequiredArgsConstructor
@@ -17,51 +16,45 @@ public class OrderEventProducer {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    @Value("${nearkart.kafka.topics.order-placed}")
+    @Value("${kafka.topics.order-placed:order.placed}")
     private String orderPlacedTopic;
 
-    @Value("${nearkart.kafka.topics.order-status-changed}")
+    @Value("${kafka.topics.order-status-changed:order.status.changed}")
     private String orderStatusChangedTopic;
 
-    @Value("${nearkart.kafka.topics.order-cancelled}")
+    @Value("${kafka.topics.order-cancelled:order.cancelled}")
     private String orderCancelledTopic;
 
     public void publishOrderPlaced(OrderPlacedEvent event) {
-        CompletableFuture<SendResult<String, Object>> future =
-                kafkaTemplate.send(orderPlacedTopic, event.getOrderId().toString(), event);
-
-        future.whenComplete((result, ex) -> {
-            if (ex != null) {
-                log.error("Failed to publish OrderPlacedEvent for orderId={}: {}",
-                        event.getOrderId(), ex.getMessage());
-            } else {
-                log.info("OrderPlacedEvent published: orderId={}, partition={}, offset={}",
-                        event.getOrderId(),
-                        result.getRecordMetadata().partition(),
-                        result.getRecordMetadata().offset());
-            }
-        });
+        log.info("Publishing OrderPlacedEvent: orderId={}", event.getOrderId());
+        kafkaTemplate.send(orderPlacedTopic, event.getOrderId().toString(), event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.error("Failed to publish OrderPlacedEvent: {}", ex.getMessage());
+                    } else {
+                        log.debug("OrderPlacedEvent published to partition {}",
+                                result.getRecordMetadata().partition());
+                    }
+                });
     }
 
     public void publishOrderStatusChanged(OrderStatusChangedEvent event) {
+        log.info("Publishing OrderStatusChangedEvent: orderId={}, {} -> {}",
+                event.getOrderId(), event.getPreviousStatus(), event.getNewStatus());
         kafkaTemplate.send(orderStatusChangedTopic, event.getOrderId().toString(), event)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
                         log.error("Failed to publish OrderStatusChangedEvent: {}", ex.getMessage());
-                    } else {
-                        log.info("OrderStatusChangedEvent published: orderId={}, status={}",
-                                event.getOrderId(), event.getNewStatus());
                     }
                 });
     }
 
     public void publishOrderCancelled(OrderCancelledEvent event) {
+        log.info("Publishing OrderCancelledEvent: orderId={}", event.getOrderId());
         kafkaTemplate.send(orderCancelledTopic, event.getOrderId().toString(), event)
                 .whenComplete((result, ex) -> {
                     if (ex != null) {
                         log.error("Failed to publish OrderCancelledEvent: {}", ex.getMessage());
-                    } else {
-                        log.info("OrderCancelledEvent published: orderId={}", event.getOrderId());
                     }
                 });
     }
