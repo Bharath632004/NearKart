@@ -1,5 +1,7 @@
 package in.nearkart.order.service.impl;
 
+import in.nearkart.order.client.ProductServiceClient;
+import in.nearkart.order.client.dto.ProductResponse;
 import in.nearkart.order.dto.request.PlaceOrderRequest;
 import in.nearkart.order.dto.request.UpdateOrderStatusRequest;
 import in.nearkart.order.dto.response.OrderItemResponse;
@@ -35,11 +37,12 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderEventProducer eventProducer;
     private final CartService cartService;
+    private final ProductServiceClient productServiceClient;
 
-    private static final BigDecimal DELIVERY_FEE     = new BigDecimal("25.00");
-    private static final BigDecimal FREE_DELIVERY_THRESHOLD = new BigDecimal("300.00");
-    private static final BigDecimal GST_RATE         = new BigDecimal("0.05");  // 5%
-    private static final int        EST_DELIVERY_MINS = 30;
+    private static final BigDecimal DELIVERY_FEE             = new BigDecimal("25.00");
+    private static final BigDecimal FREE_DELIVERY_THRESHOLD  = new BigDecimal("300.00");
+    private static final BigDecimal GST_RATE                 = new BigDecimal("0.05"); // 5%
+    private static final int        EST_DELIVERY_MINS        = 30;
 
     // ----------------------------------------------------------------
     // PLACE ORDER
@@ -47,17 +50,22 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse placeOrder(UUID customerId, PlaceOrderRequest request) {
 
-        // TODO: Call product-service (Feign) to validate products and get prices
-        // TODO: Call inventory-service (Feign) to check and reserve stock
-        // TODO: Call coupon-service to apply discount if couponId present
-
-        // Build order items from request (prices will come from product-service)
+        // Fetch product details from product-service via Feign and build order items
         List<OrderItem> items = request.getItems().stream().map(itemReq -> {
-            BigDecimal unitPrice  = BigDecimal.TEN;   // Replace with Feign call
+            ProductResponse product = productServiceClient.getProductById(itemReq.getProductId());
+
+            if (!product.isAvailable()) {
+                throw new IllegalArgumentException(
+                        "Product is not available: " + product.getName());
+            }
+
+            BigDecimal unitPrice  = product.getPrice();
             BigDecimal totalPrice = unitPrice.multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+
             return OrderItem.builder()
                     .productId(itemReq.getProductId())
-                    .productName("Product Name")       // Replace with Feign call
+                    .productName(product.getName())
+                    .productImage(product.getImageUrl())
                     .quantity(itemReq.getQuantity())
                     .unitPrice(unitPrice)
                     .totalPrice(totalPrice)
@@ -71,8 +79,8 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal deliveryFee = subtotal.compareTo(FREE_DELIVERY_THRESHOLD) >= 0
                 ? BigDecimal.ZERO : DELIVERY_FEE;
 
-        BigDecimal taxAmount    = subtotal.multiply(GST_RATE);
-        BigDecimal totalAmount  = subtotal.add(deliveryFee).add(taxAmount);
+        BigDecimal taxAmount   = subtotal.multiply(GST_RATE);
+        BigDecimal totalAmount = subtotal.add(deliveryFee).add(taxAmount);
 
         Order order = Order.builder()
                 .customerId(customerId)
@@ -95,7 +103,7 @@ public class OrderServiceImpl implements OrderService {
         Order saved = orderRepository.save(order);
         log.info("Order placed: orderNumber={}, customerId={}", saved.getOrderNumber(), customerId);
 
-        // Publish Kafka event → payment-service, notification-service
+        // Publish Kafka event -> payment-service, notification-service
         eventProducer.publishOrderPlaced(toPlacedEvent(saved));
 
         // Clear customer cart after successful order
@@ -153,10 +161,9 @@ public class OrderServiceImpl implements OrderService {
         }
 
         Order updated = orderRepository.save(order);
-        log.info("Order status updated: orderNumber={}, {} → {}",
+        log.info("Order status updated: orderNumber={}, {} -> {}",
                 order.getOrderNumber(), previous, request.getStatus());
 
-        // Publish Kafka event → notification-service
         eventProducer.publishOrderStatusChanged(
                 OrderStatusChangedEvent.builder()
                         .orderId(updated.getId())
@@ -191,7 +198,6 @@ public class OrderServiceImpl implements OrderService {
         Order cancelled = orderRepository.save(order);
         log.info("Order cancelled: orderNumber={}, reason={}", order.getOrderNumber(), reason);
 
-        // Publish Kafka event → payment-service (trigger refund), notification-service
         eventProducer.publishOrderCancelled(
                 OrderCancelledEvent.builder()
                         .orderId(cancelled.getId())
@@ -256,7 +262,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private void validateStatusTransition(OrderStatus from, OrderStatus to) {
-        // Define allowed transitions
         boolean valid = switch (from) {
             case PENDING           -> to == OrderStatus.CONFIRMED  || to == OrderStatus.CANCELLED;
             case CONFIRMED         -> to == OrderStatus.PREPARING  || to == OrderStatus.CANCELLED;
@@ -270,7 +275,7 @@ public class OrderServiceImpl implements OrderService {
         };
         if (!valid) {
             throw new InvalidStatusTransitionException(
-                    "Invalid status transition: " + from + " → " + to);
+                    "Invalid status transition: " + from + " -> " + to);
         }
     }
 
