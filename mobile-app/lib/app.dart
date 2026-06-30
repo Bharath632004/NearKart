@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
-import 'screens/splash_screen.dart';
+import 'core/routes/app_routes.dart';
 
 class NearKartApp extends StatelessWidget {
   const NearKartApp({super.key});
@@ -11,7 +11,8 @@ class NearKartApp extends StatelessWidget {
       title: 'NearKart',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const SplashScreen(),
+      initialRoute: AppRoutes.splash,
+      onGenerateRoute: AppRoutes.generateRoute,
     );
   }
 }

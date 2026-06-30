@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/order_model.dart';
+import '../../core/routes/app_routes.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
   final String orderId;
@@ -11,13 +12,14 @@ class OrderTrackingScreen extends StatefulWidget {
 
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   OrderStatus _status = OrderStatus.placed;
+  bool _delivered = false;
 
   final List<Map<String, dynamic>> _trackingSteps = [
-    {'status': OrderStatus.placed, 'title': 'Order Placed', 'subtitle': 'Your order has been received'},
-    {'status': OrderStatus.confirmed, 'title': 'Order Confirmed', 'subtitle': 'Shop confirmed your order'},
-    {'status': OrderStatus.picked, 'title': 'Picked Up', 'subtitle': 'Delivery partner picked up your order'},
-    {'status': OrderStatus.onTheWay, 'title': 'On The Way', 'subtitle': 'Your order is on the way'},
-    {'status': OrderStatus.delivered, 'title': 'Delivered', 'subtitle': 'Order delivered successfully'},
+    {'status': OrderStatus.placed, 'title': 'Order Placed', 'subtitle': 'Your order has been received', 'icon': Icons.receipt_long},
+    {'status': OrderStatus.confirmed, 'title': 'Order Confirmed', 'subtitle': 'Shop is preparing your order', 'icon': Icons.thumb_up},
+    {'status': OrderStatus.picked, 'title': 'Picked Up', 'subtitle': 'Delivery partner picked your order', 'icon': Icons.shopping_bag},
+    {'status': OrderStatus.onTheWay, 'title': 'On The Way', 'subtitle': 'Arriving at your location', 'icon': Icons.directions_bike},
+    {'status': OrderStatus.delivered, 'title': 'Delivered', 'subtitle': 'Order delivered successfully', 'icon': Icons.check_circle},
   ];
 
   @override
@@ -27,79 +29,96 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Future<void> _simulateTracking() async {
+    // TODO: Replace with real-time WebSocket or polling from API
     final statuses = [
-      OrderStatus.placed,
       OrderStatus.confirmed,
       OrderStatus.picked,
       OrderStatus.onTheWay,
       OrderStatus.delivered,
     ];
-
-    for (int i = 0; i < statuses.length; i++) {
-      await Future.delayed(const Duration(seconds: 3));
+    for (final status in statuses) {
+      await Future.delayed(const Duration(seconds: 4));
       if (!mounted) return;
-      setState(() => _status = statuses[i]);
+      setState(() {
+        _status = status;
+        if (status == OrderStatus.delivered) _delivered = true;
+      });
     }
   }
 
-  int get _currentStep => _trackingSteps.indexWhere((s) => s['status'] == _status);
+  int get _currentStep =>
+      _trackingSteps.indexWhere((s) => s['status'] == _status);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Track Order #${widget.orderId}')),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Colors.green, Colors.lightGreen]),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Estimated Delivery',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (r) => false);
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Order #${widget.orderId}'),
+          leading: IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                context, AppRoutes.home, (r) => false),
+          ),
+        ),
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _delivered
+                        ? [Colors.green.shade700, Colors.green.shade400]
+                        : [Colors.orange.shade600, Colors.orange.shade400],
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '25 - 35 mins',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _delivered ? 'Delivered!' : 'Estimated Delivery',
+                      style: const TextStyle(color: Colors.white70, fontSize: 14),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
+                    const SizedBox(height: 4),
+                    Text(
+                      _delivered ? 'Enjoy your order 🎉' : '25 - 35 mins',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold),
                     ),
-                    child: Text(
-                      _trackingSteps[_currentStep]['title'],
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Text(
+                        _trackingSteps[_currentStep]['title'],
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w600),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  Row(
+              if (!_delivered)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
                     children: [
                       CircleAvatar(
                         backgroundColor: Colors.green.shade100,
@@ -110,119 +129,119 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Delivery Partner', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            Text('Ravi Kumar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            Text('Delivery Partner',
+                                style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text('Ravi Kumar',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 15)),
                           ],
                         ),
                       ),
                       IconButton(
                         onPressed: () {},
                         icon: const Icon(Icons.call, color: Colors.green),
+                        tooltip: 'Call Delivery Partner',
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: const [
-                      Icon(Icons.directions_bike, color: Colors.orange),
-                      SizedBox(width: 8),
-                      Text('Bike • AP 39 XY 1234', style: TextStyle(fontSize: 14)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Order Status',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...List.generate(_trackingSteps.length, (index) {
-              final step = _trackingSteps[index];
-              final isCompleted = index <= _currentStep;
-              final isLast = index == _trackingSteps.length - 1;
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: isCompleted ? Colors.green : Colors.grey.shade300,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            isCompleted ? Icons.check : Icons.circle,
-                            size: 16,
-                            color: isCompleted ? Colors.white : Colors.grey,
-                          ),
-                        ),
-                        if (!isLast)
-                          Container(
-                            width: 2,
-                            height: 50,
-                            color: isCompleted ? Colors.green : Colors.grey.shade300,
-                          ),
-                      ],
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              step['title'],
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isCompleted ? Colors.black : Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              step['subtitle'],
-                              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
-              );
-            }),
-            const SizedBox(height: 20),
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(16),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Order Progress',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                ),
               ),
-              child: const Row(
-                children: [
-                  Icon(Icons.location_on, color: Colors.orange),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Delivery Address: Your selected location will appear here',
-                      style: TextStyle(fontSize: 14),
+              const SizedBox(height: 8),
+              ...List.generate(_trackingSteps.length, (index) {
+                final step = _trackingSteps[index];
+                final isCompleted = index <= _currentStep;
+                final isActive = index == _currentStep;
+                final isLast = index == _trackingSteps.length - 1;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? Colors.green
+                                  : Colors.grey.shade300,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isCompleted ? Icons.check : step['icon'],
+                              size: 16,
+                              color: isCompleted ? Colors.white : Colors.grey,
+                            ),
+                          ),
+                          if (!isLast)
+                            Container(
+                              width: 2,
+                              height: 52,
+                              color: isCompleted
+                                  ? Colors.green
+                                  : Colors.grey.shade300,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                step['title'],
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isCompleted ? Colors.black : Colors.grey,
+                                  fontSize: isActive ? 15 : 14,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                step['subtitle'],
+                                style: TextStyle(
+                                    color: Colors.grey.shade600, fontSize: 12),
+                              ),
+                              const SizedBox(height: 18),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              if (_delivered)
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                          context, AppRoutes.home, (r) => false),
+                      icon: const Icon(Icons.shopping_bag),
+                      label: const Text('Order Again'),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
