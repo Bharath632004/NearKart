@@ -17,7 +17,9 @@ public class ProductResponse {
     private int stockQuantity;
     private String imageUrl;
     private boolean available;
+    private Long categoryId;
     private String categoryName;
     private Long shopId;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
