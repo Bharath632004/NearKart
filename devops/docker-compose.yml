@@ -1,37 +1,91 @@
 version: '3.8'
 
 services:
+
+  # ─── Database ───────────────────────────────────────────────
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: nearkart-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: nearkart
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: your_password
+      POSTGRES_USER: nearkart_user
+      POSTGRES_PASSWORD: nearkart_pass
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init:/docker-entrypoint-initdb.d  # auto-runs schema.sql on first start
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nearkart_user -d nearkart"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
-    image: redis:7
+    image: redis:7-alpine
     container_name: nearkart-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # ─── Microservices ──────────────────────────────────────────
   user-service:
-    build: ../backend/user-service
+    build:
+      context: ../backend/user-service
+      dockerfile: Dockerfile
     container_name: nearkart-user-service
+    restart: unless-stopped
     ports:
       - "8081:8081"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkart
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: your_password
+      SPRING_DATASOURCE_USERNAME: nearkart_user
+      SPRING_DATASOURCE_PASSWORD: nearkart_pass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+
+  product-service:
+    build:
+      context: ../backend/product-service
+      dockerfile: Dockerfile
+    container_name: nearkart-product-service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkart
+      SPRING_DATASOURCE_USERNAME: nearkart_user
+      SPRING_DATASOURCE_PASSWORD: nearkart_pass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: ../backend/order-service
+      dockerfile: Dockerfile
+    container_name: nearkart-order-service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkart
+      SPRING_DATASOURCE_USERNAME: nearkart_user
+      SPRING_DATASOURCE_PASSWORD: nearkart_pass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+    driver: local
