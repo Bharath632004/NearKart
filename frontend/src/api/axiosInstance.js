@@ -1,28 +1,26 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081/api',
+const axiosInstance = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Attach JWT token to every request automatically
-api.interceptors.request.use((config) => {
+axiosInstance.interceptors.request.use((config) => {
   const token = localStorage.getItem('nearkart_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Handle 401 globally – redirect to login
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+axiosInstance.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
       localStorage.removeItem('nearkart_token');
+      localStorage.removeItem('nearkart_role');
       window.location.href = '/login';
     }
-    return Promise.reject(error);
+    return Promise.reject(err);
   }
 );
 
-export default api;
+export default axiosInstance;

@@ -1,5 +1,6 @@
-import api from './axiosInstance';
+import axiosInstance from './axiosInstance';
 
-export const registerUser = (data) => api.post('/auth/register', data);
-export const loginUser = (data) => api.post('/auth/login', data);
-export const getMyProfile = () => api.get('/users/me');
+export const loginApi = (data) => axiosInstance.post('/auth/login', data);
+export const registerApi = (data) => axiosInstance.post('/auth/register', data);
+export const getProfileApi = () => axiosInstance.get('/auth/profile');
+export const updateProfileApi = (data) => axiosInstance.put('/auth/profile', data);

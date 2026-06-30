@@ -1,64 +1,83 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import Navbar from '../../components/Navbar';
-
-const MOCK_PRODUCTS = [
-  { id: 1, name: 'Rice (5 kg)', price: 250, unit: 'bag', emoji: '🌾' },
-  { id: 2, name: 'Toor Dal (1 kg)', price: 120, unit: 'kg', emoji: '🫘' },
-  { id: 3, name: 'Sunflower Oil (1 L)', price: 180, unit: 'bottle', emoji: '🫙' },
-  { id: 4, name: 'Sugar (1 kg)', price: 45, unit: 'kg', emoji: '🍬' },
-  { id: 5, name: 'Milk (500 ml)', price: 28, unit: 'packet', emoji: '🥛' },
-  { id: 6, name: 'Eggs (12 pcs)', price: 72, unit: 'dozen', emoji: '🥚' },
-];
+import Loader from '../../components/Loader';
+import ErrorMsg from '../../components/ErrorMsg';
+import { getProductsByShopApi } from '../../api/productApi';
+import { addToCart } from '../../redux/cartSlice';
 
 export default function ProductList() {
   const { shopId } = useParams();
-  const [cart, setCart] = useState({});
+  const dispatch = useDispatch();
+  const { loading: cartLoading } = useSelector((s) => s.cart);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [added, setAdded] = useState({});
+  const [search, setSearch] = useState('');
 
-  // fix: persist cart to localStorage so Cart.jsx can read it
-  const addToCart = (product) => {
-    setCart(prev => {
-      const updated = { ...prev, [product.id]: (prev[product.id] || 0) + 1 };
-      localStorage.setItem('nearkart_cart', JSON.stringify(updated));
-      return updated;
-    });
+  useEffect(() => {
+    getProductsByShopApi(shopId).then(r => setProducts(r.data || []))
+      .catch(() => setError('Failed to load products'))
+      .finally(() => setLoading(false));
+  }, [shopId]);
+
+  const handleAdd = async (product) => {
+    await dispatch(addToCart({ productId: product.id, shopId, quantity: 1 }));
+    setAdded(a => ({ ...a, [product.id]: true }));
+    setTimeout(() => setAdded(a => ({ ...a, [product.id]: false })), 2000);
   };
 
-  const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
-
-  const s = {
-    page: { minHeight: '100vh', background: '#f5f7fa' },
-    header: { padding: '24px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 20, padding: '0 32px 32px' },
-    card: { background: '#fff', borderRadius: 12, padding: 20, boxShadow: '0 2px 10px rgba(0,0,0,.07)', textAlign: 'center' },
-    emoji: { fontSize: 40 },
-    name: { fontWeight: 600, marginTop: 8, fontSize: 15 },
-    price: { color: '#1a73e8', fontWeight: 700, fontSize: 16, margin: '8px 0' },
-    btn: { background: '#1a73e8', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', fontWeight: 600 },
-    cartBadge: { background: '#1a73e8', color: '#fff', borderRadius: 8, padding: '8px 20px', fontWeight: 600 },
-  };
+  const filtered = products.filter(p =>
+    p.name?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <div style={s.page}>
-      <Navbar role="CUSTOMER" />
-      <div style={s.header}>
-        <h2 style={{ margin: 0 }}>🛍️ Products (Shop #{shopId})</h2>
-        <span style={s.cartBadge}>🛒 Cart: {cartCount} items</span>
-      </div>
-      <div style={s.grid}>
-        {MOCK_PRODUCTS.map(product => (
-          <div key={product.id} style={s.card}>
-            <div style={s.emoji}>{product.emoji}</div>
-            <div style={s.name}>{product.name}</div>
-            <div style={s.price}>₹{product.price} / {product.unit}</div>
-            {cart[product.id] ? (
-              <span style={{ fontWeight: 600, color: '#2e7d32' }}>✅ {cart[product.id]} added</span>
-            ) : (
-              <button style={s.btn} onClick={() => addToCart(product)}>Add to Cart</button>
-            )}
-          </div>
-        ))}
+    <div>
+      <Navbar />
+      <div style={styles.page}>
+        <h2 style={styles.heading}>🛍️ Products</h2>
+        <input style={styles.search} placeholder="Search products..."
+          value={search} onChange={e => setSearch(e.target.value)} />
+        <ErrorMsg msg={error} />
+        {loading ? <Loader /> : (
+          filtered.length === 0 ? <p style={{ color: '#888' }}>No products found.</p> : (
+            <div style={styles.grid}>
+              {filtered.map(p => (
+                <div key={p.id} style={styles.card}>
+                  <div style={styles.imgBox}>🥦</div>
+                  <div style={styles.name}>{p.name}</div>
+                  <div style={styles.desc}>{p.description || 'Fresh product'}</div>
+                  <div style={styles.price}>₹{p.price}</div>
+                  <div style={styles.stock}>{p.stock > 0 ? `In stock: ${p.stock}` : '❌ Out of stock'}</div>
+                  <button
+                    style={{ ...styles.btn, background: added[p.id] ? '#22c55e' : '#e94560', opacity: p.stock === 0 ? 0.5 : 1 }}
+                    disabled={p.stock === 0 || cartLoading}
+                    onClick={() => handleAdd(p)}
+                  >
+                    {added[p.id] ? '✅ Added!' : '🛒 Add to Cart'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )
+        )}
       </div>
     </div>
   );
 }
+
+const styles = {
+  page: { padding: '24px 32px', maxWidth: 1100, margin: '0 auto' },
+  heading: { color: '#1a1a2e', marginBottom: 16 },
+  search: { width: '100%', maxWidth: 400, padding: '10px 14px', border: '1px solid #ddd', borderRadius: 8, marginBottom: 20, fontSize: 14, boxSizing: 'border-box' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 },
+  card: { background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
+  imgBox: { fontSize: 48, textAlign: 'center', marginBottom: 8 },
+  name: { fontWeight: 700, fontSize: 15, color: '#1a1a2e' },
+  desc: { color: '#888', fontSize: 12, marginTop: 4 },
+  price: { color: '#e94560', fontWeight: 700, fontSize: 18, margin: '8px 0' },
+  stock: { fontSize: 12, color: '#666', marginBottom: 10 },
+  btn: { width: '100%', padding: '9px', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 },
+};

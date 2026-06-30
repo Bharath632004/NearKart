@@ -1,67 +1,110 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../../components/Navbar';
+import Loader from '../../components/Loader';
+import ErrorMsg from '../../components/ErrorMsg';
+import { getMerchantProductsApi, createProductApi, updateProductApi, deleteProductApi } from '../../api/productApi';
 
-const INIT = [
-  { id: 1, name: 'Rice (5 kg)', price: 250, stock: 100, category: 'Grocery' },
-  { id: 2, name: 'Toor Dal (1 kg)', price: 120, stock: 60, category: 'Grocery' },
-  { id: 3, name: 'Sunflower Oil (1 L)', price: 180, stock: 40, category: 'Grocery' },
-];
-
-const s = {
-  page: { minHeight: '100vh', background: '#f5f7fa' },
-  container: { maxWidth: 900, margin: '0 auto', padding: 32 },
-  table: { width: '100%', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,.07)', borderCollapse: 'collapse' },
-  th: { background: '#1a73e8', color: '#fff', padding: '12px 16px', textAlign: 'left', fontWeight: 600 },
-  td: { padding: '12px 16px', borderBottom: '1px solid #f0f0f0' },
-  form: { background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,.07)', marginBottom: 24 },
-  input: { padding: '8px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, marginRight: 8, marginBottom: 8 },
-  btn: { background: '#1a73e8', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', fontWeight: 600 },
-  delBtn: { background: '#ffebee', color: '#c62828', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' },
-};
+const empty = { name: '', description: '', price: '', stock: '', category: '' };
 
 export default function ManageProducts() {
-  const [products, setProducts] = useState(INIT);
-  const [form, setForm] = useState({ name: '', price: '', stock: '', category: '' });
-  const add = () => {
-    if (!form.name || !form.price) return;
-    setProducts(p => [...p, { ...form, id: Date.now(), price: +form.price, stock: +form.stock }]);
-    setForm({ name: '', price: '', stock: '', category: '' });
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(empty);
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = () => getMerchantProductsApi().then(r => setProducts(r.data || []))
+    .catch(() => setError('Failed to load')).finally(() => setLoading(false));
+
+  useEffect(() => { load(); }, []);
+
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setSaving(true); setError('');
+    try {
+      if (editing) await updateProductApi(editing, form);
+      else await createProductApi(form);
+      setShowForm(false); setForm(empty); setEditing(null); load();
+    } catch { setError('Failed to save product'); }
+    finally { setSaving(false); }
   };
-  const del = (id) => setProducts(p => p.filter(x => x.id !== id));
+
+  const handleEdit = (p) => { setForm({ name: p.name, description: p.description, price: p.price, stock: p.stock, category: p.category }); setEditing(p.id); setShowForm(true); };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this product?')) return;
+    try { await deleteProductApi(id); load(); } catch { setError('Delete failed'); }
+  };
+
   return (
-    <div style={s.page}>
-      <Navbar role="MERCHANT" />
-      <div style={s.container}>
-        <h2>🛍️ Manage Products</h2>
-        <div style={s.form}>
-          <h4 style={{ marginTop: 0 }}>Add New Product</h4>
-          {/* fix: flex-wrap so inputs don't overflow on small screens */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-            {['name', 'price', 'stock', 'category'].map(f => (
-              <input
-                key={f}
-                style={s.input}
-                placeholder={f.charAt(0).toUpperCase() + f.slice(1)}
-                value={form[f]}
-                onChange={e => setForm(v => ({ ...v, [f]: e.target.value }))}
-              />
-            ))}
-            <button style={s.btn} onClick={add}>+ Add</button>
-          </div>
+    <div>
+      <Navbar />
+      <div style={styles.page}>
+        <div style={styles.header}>
+          <h2 style={styles.heading}>📦 Manage Products</h2>
+          <button style={styles.addBtn} onClick={() => { setForm(empty); setEditing(null); setShowForm(true); }}>+ Add Product</button>
         </div>
-        <table style={s.table}>
-          <thead><tr>{['Name', 'Price', 'Stock', 'Category', 'Action'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
-          <tbody>{products.map(p => (
-            <tr key={p.id}>
-              <td style={s.td}>{p.name}</td>
-              <td style={s.td}>₹{p.price}</td>
-              <td style={s.td}>{p.stock}</td>
-              <td style={s.td}>{p.category}</td>
-              <td style={s.td}><button style={s.delBtn} onClick={() => del(p.id)}>Delete</button></td>
-            </tr>
-          ))}</tbody>
-        </table>
+        <ErrorMsg msg={error} />
+        {showForm && (
+          <div style={styles.formCard}>
+            <h3 style={{ marginBottom: 16 }}>{editing ? 'Edit Product' : 'Add New Product'}</h3>
+            <form onSubmit={handleSubmit} style={styles.formGrid}>
+              {[['name','Product Name'],['category','Category'],['price','Price (₹)'],['stock','Stock Qty'],['description','Description']].map(([n,l]) => (
+                <div key={n} style={{ gridColumn: n === 'description' ? 'span 2' : 'auto' }}>
+                  <label style={styles.label}>{l}</label>
+                  <input name={n} value={form[n]} onChange={handleChange} style={styles.input} required />
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 10, gridColumn: 'span 2' }}>
+                <button type="submit" style={styles.saveBtn} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</button>
+                <button type="button" style={styles.cancelBtn} onClick={() => { setShowForm(false); setEditing(null); }}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        )}
+        {loading ? <Loader /> : products.length === 0 ? <p style={{ color: '#888' }}>No products yet.</p> : (
+          <table style={styles.table}>
+            <thead><tr style={styles.th}>{['Name','Category','Price','Stock','Actions'].map(h => <th key={h} style={styles.thCell}>{h}</th>)}</tr></thead>
+            <tbody>
+              {products.map(p => (
+                <tr key={p.id} style={styles.tr}>
+                  <td style={styles.td}>{p.name}</td>
+                  <td style={styles.td}>{p.category}</td>
+                  <td style={styles.td}>₹{p.price}</td>
+                  <td style={styles.td}>{p.stock}</td>
+                  <td style={styles.td}>
+                    <button style={styles.editBtn} onClick={() => handleEdit(p)}>✏️ Edit</button>
+                    <button style={styles.delBtn} onClick={() => handleDelete(p.id)}>🗑 Delete</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 }
+
+const styles = {
+  page: { padding: '24px 32px', maxWidth: 1100, margin: '0 auto' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  heading: { color: '#1a1a2e' },
+  addBtn: { background: '#e94560', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', cursor: 'pointer', fontWeight: 600 },
+  formCard: { background: '#fff', borderRadius: 12, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' },
+  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 },
+  label: { display: 'block', fontSize: 13, color: '#555', marginBottom: 4 },
+  input: { width: '100%', padding: '8px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' },
+  saveBtn: { padding: '10px 24px', background: '#e94560', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 },
+  cancelBtn: { padding: '10px 24px', background: '#eee', color: '#333', border: 'none', borderRadius: 8, cursor: 'pointer' },
+  table: { width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' },
+  th: { background: '#1a1a2e', color: '#fff' },
+  thCell: { padding: '10px 14px', textAlign: 'left', fontSize: 13 },
+  tr: { borderBottom: '1px solid #f0f0f0' },
+  td: { padding: '10px 14px', fontSize: 14 },
+  editBtn: { background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', marginRight: 6, fontSize: 12 },
+  delBtn: { background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12 },
+};

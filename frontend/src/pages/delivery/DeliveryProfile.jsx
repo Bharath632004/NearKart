@@ -1,44 +1,65 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../../components/Navbar';
-
-const s = {
-  page: { minHeight: '100vh', background: '#f5f7fa' },
-  container: { maxWidth: 500, margin: '0 auto', padding: 32 },
-  card: { background: '#fff', borderRadius: 12, padding: 32, boxShadow: '0 2px 10px rgba(0,0,0,.07)' },
-  label: { fontWeight: 600, color: '#555', marginBottom: 4, display: 'block' },
-  input: { width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box', marginBottom: 14 },
-  btn: { background: '#1a73e8', color: '#fff', border: 'none', borderRadius: 8, padding: '12px 32px', cursor: 'pointer', fontWeight: 700, width: '100%' },
-  statusRow: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 },
-  toggle: { padding: '6px 18px', border: 'none', borderRadius: 20, cursor: 'pointer', fontWeight: 600 },
-};
+import Loader from '../../components/Loader';
+import ErrorMsg from '../../components/ErrorMsg';
+import { getProfileApi, updateProfileApi } from '../../api/authApi';
 
 export default function DeliveryProfile() {
-  const [form, setForm] = useState({ name: 'Ramesh Delivery', phone: '9876543211', vehicle: 'Bike - TS09AB1234', area: 'Vanikamdinne, 3km radius' });
-  const [online, setOnline] = useState(true);
-  const [saved, setSaved] = useState(false);
-  const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  const [profile, setProfile] = useState({ name: '', email: '', phone: '', vehicleType: '', licenseNo: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    getProfileApi().then(r => setProfile({ ...profile, ...r.data }))
+      .catch(() => setError('Failed to load')).finally(() => setLoading(false));
+  }, []);
+
+  const handleChange = (e) => setProfile({ ...profile, [e.target.name]: e.target.value });
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setSaving(true); setError('');
+    try { await updateProfileApi(profile); setSuccess(true); setTimeout(() => setSuccess(false), 2000); }
+    catch { setError('Update failed'); } finally { setSaving(false); }
+  };
+
   return (
-    <div style={s.page}>
-      <Navbar role="DELIVERY" />
-      <div style={s.container}>
-        <h2>👤 Delivery Profile</h2>
-        <div style={s.card}>
-          <div style={s.statusRow}>
-            <span style={{ fontWeight: 600 }}>Status:</span>
-            <button style={{ ...s.toggle, background: online ? '#e8f5e9' : '#ffebee', color: online ? '#2e7d32' : '#c62828' }} onClick={() => setOnline(o => !o)}>
-              {online ? '🟢 Online' : '🔴 Offline'}
-            </button>
-          </div>
-          {Object.keys(form).map(field => (
-            <div key={field}>
-              <label style={s.label}>{field.charAt(0).toUpperCase()+field.slice(1)}</label>
-              <input style={s.input} name={field} value={form[field]} onChange={handleChange} />
-            </div>
-          ))}
-          {saved && <p style={{ color: '#2e7d32', textAlign: 'center' }}>✅ Saved!</p>}
-          <button style={s.btn} onClick={() => setSaved(true)}>Save Profile</button>
+    <div>
+      <Navbar />
+      <div style={styles.page}>
+        <div style={styles.card}>
+          <div style={styles.avatar}>🚴</div>
+          <h2 style={styles.heading}>Delivery Profile</h2>
+          {loading ? <Loader /> : (
+            <>
+              <ErrorMsg msg={error} />
+              {success && <div style={styles.success}>✅ Updated!</div>}
+              <form onSubmit={handleSubmit}>
+                {[['name','Name','text'],['email','Email','email'],['phone','Phone','tel'],
+                  ['vehicleType','Vehicle Type','text'],['licenseNo','License No.','text']].map(([n,l,t]) => (
+                  <div style={styles.field} key={n}>
+                    <label style={styles.label}>{l}</label>
+                    <input name={n} type={t} value={profile[n] || ''} onChange={handleChange} style={styles.input} />
+                  </div>
+                ))}
+                <button type="submit" style={styles.btn} disabled={saving}>{saving ? 'Saving...' : 'Update'}</button>
+              </form>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 }
+
+const styles = {
+  page: { padding: '40px 32px', display: 'flex', justifyContent: 'center', background: '#f0f4f8', minHeight: '90vh' },
+  card: { background: '#fff', borderRadius: 12, padding: 32, width: 440, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', height: 'fit-content' },
+  avatar: { fontSize: 56, textAlign: 'center', marginBottom: 8 },
+  heading: { textAlign: 'center', color: '#1a1a2e', marginBottom: 20 },
+  field: { marginBottom: 14 },
+  label: { display: 'block', fontSize: 13, color: '#555', marginBottom: 5 },
+  input: { width: '100%', padding: '9px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, boxSizing: 'border-box' },
+  btn: { width: '100%', padding: '12px', background: '#e94560', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 },
+  success: { background: '#eaffea', color: '#1a8c1a', border: '1px solid #a3e4a3', borderRadius: 6, padding: '8px 14px', marginBottom: 12 },
+};

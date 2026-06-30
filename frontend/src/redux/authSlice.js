@@ -1,23 +1,21 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { loginUser, registerUser } from '../api/authApi';
+import { loginApi, registerApi } from '../api/authApi';
 
-export const login = createAsyncThunk('auth/login', async (credentials, thunkAPI) => {
+export const loginUser = createAsyncThunk('auth/login', async (data, { rejectWithValue }) => {
   try {
-    const res = await loginUser(credentials);
-    localStorage.setItem('nearkart_token', res.data.token);
+    const res = await loginApi(data);
     return res.data;
   } catch (err) {
-    return thunkAPI.rejectWithValue(err.response?.data?.message || 'Login failed');
+    return rejectWithValue(err.response?.data?.message || 'Login failed');
   }
 });
 
-export const register = createAsyncThunk('auth/register', async (userData, thunkAPI) => {
+export const registerUser = createAsyncThunk('auth/register', async (data, { rejectWithValue }) => {
   try {
-    const res = await registerUser(userData);
-    localStorage.setItem('nearkart_token', res.data.token);
+    const res = await registerApi(data);
     return res.data;
   } catch (err) {
-    return thunkAPI.rejectWithValue(err.response?.data?.message || 'Registration failed');
+    return rejectWithValue(err.response?.data?.message || 'Registration failed');
   }
 });
 
@@ -26,6 +24,7 @@ const authSlice = createSlice({
   initialState: {
     user: null,
     token: localStorage.getItem('nearkart_token') || null,
+    role: localStorage.getItem('nearkart_role') || null,
     loading: false,
     error: null,
   },
@@ -33,33 +32,29 @@ const authSlice = createSlice({
     logout(state) {
       state.user = null;
       state.token = null;
+      state.role = null;
       localStorage.removeItem('nearkart_token');
+      localStorage.removeItem('nearkart_role');
     },
+    clearError(state) { state.error = null; },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(login.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(login.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload;
-        state.token = action.payload.token;
+      .addCase(loginUser.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(loginUser.fulfilled, (s, a) => {
+        s.loading = false;
+        s.token = a.payload.token;
+        s.role = a.payload.role;
+        s.user = a.payload.user;
+        localStorage.setItem('nearkart_token', a.payload.token);
+        localStorage.setItem('nearkart_role', a.payload.role);
       })
-      .addCase(login.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      })
-      .addCase(register.pending, (state) => { state.loading = true; state.error = null; })
-      .addCase(register.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload;
-        state.token = action.payload.token;
-      })
-      .addCase(register.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
-      });
+      .addCase(loginUser.rejected, (s, a) => { s.loading = false; s.error = a.payload; })
+      .addCase(registerUser.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(registerUser.fulfilled, (s) => { s.loading = false; })
+      .addCase(registerUser.rejected, (s, a) => { s.loading = false; s.error = a.payload; });
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, clearError } = authSlice.actions;
 export default authSlice.reducer;
