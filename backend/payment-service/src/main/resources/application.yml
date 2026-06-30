@@ -1,0 +1,72 @@
+server:
+  port: 8087
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: payment-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/nearkart_db
+    username: ${DB_USERNAME:nearkart}
+    password: ${DB_PASSWORD:nearkart123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+      acks: all
+      retries: 3
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+
+# ── Razorpay ─────────────────────────────────────────────────────────
+razorpay:
+  key-id:     ${RAZORPAY_KEY_ID:rzp_test_XXXXXXXXXXXXXXXX}
+  key-secret: ${RAZORPAY_KEY_SECRET:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX}
+
+nearkart:
+  kafka:
+    topics:
+      payment-success:  nearkart.payment.success
+      payment-failed:   nearkart.payment.failed
+      refund-initiated: nearkart.payment.refund.initiated
+      order-cancelled:  nearkart.order.cancelled
+    consumer:
+      group-id: payment-service-group
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    in.nearkart: DEBUG
+    com.razorpay:  INFO
+    org.apache.kafka: WARN
