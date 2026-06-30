@@ -1,7 +1,7 @@
 package com.nearkart.analytics.controller;
 
 import com.nearkart.analytics.model.DeliveryAnalytics;
-import com.nearkart.analytics.repository.DeliveryAnalyticsRepository;
+import com.nearkart.analytics.service.DeliveryAnalyticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -15,19 +15,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DeliveryAnalyticsController {
 
-    private final DeliveryAnalyticsRepository deliveryRepo;
+    private final DeliveryAnalyticsService deliveryService;
 
     @GetMapping("/sla")
     public ResponseEntity<List<DeliveryAnalytics>> getSlaReport(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok(deliveryRepo.findByDateBetweenOrderByDateAsc(from, to));
+        return ResponseEntity.ok(deliveryService.getSlaReport(from, to));
     }
 
     @GetMapping("/today")
     public ResponseEntity<DeliveryAnalytics> getTodayDelivery() {
-        return deliveryRepo.findByDate(LocalDate.now())
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        DeliveryAnalytics result = deliveryService.getToday();
+        return result != null ? ResponseEntity.ok(result) : ResponseEntity.notFound().build();
     }
 }

@@ -27,7 +27,7 @@ public class AnalyticsAggregationService {
 
         LocalDate today = event.getEventTime().toLocalDate();
 
-        // Update Sales Analytics
+        // --- Sales Analytics ---
         SalesAnalytics sales = salesRepo.findByDateAndPeriod(today, SalesAnalytics.Period.DAILY)
                 .orElseGet(() -> SalesAnalytics.builder()
                         .date(today)
@@ -49,10 +49,9 @@ public class AnalyticsAggregationService {
                                 2, java.math.RoundingMode.HALF_UP));
             }
         }
-        sales.setUpdatedAt(LocalDateTime.now());
         salesRepo.save(sales);
 
-        // Update Merchant Analytics
+        // --- Merchant Analytics ---
         MerchantAnalytics merchant = merchantRepo.findByMerchantIdAndDate(event.getMerchantId(), today)
                 .orElseGet(() -> MerchantAnalytics.builder()
                         .merchantId(event.getMerchantId())
@@ -70,6 +69,23 @@ public class AnalyticsAggregationService {
         }
         merchant.setUpdatedAt(LocalDateTime.now());
         merchantRepo.save(merchant);
+
+        // --- Customer Analytics ---
+        if ("PLACED".equals(event.getStatus()) && event.getCustomerId() != null) {
+            CustomerAnalytics customer = customerRepo.findByDate(today)
+                    .orElseGet(() -> CustomerAnalytics.builder()
+                            .date(today)
+                            .newCustomers(0L)
+                            .activeCustomers(0L)
+                            .returningCustomers(0L)
+                            .totalCartAbandoned(0L)
+                            .averageSpendPerCustomer(java.math.BigDecimal.ZERO)
+                            .retentionRate(0.0)
+                            .build());
+            customer.setActiveCustomers(customer.getActiveCustomers() + 1);
+            customer.setUpdatedAt(LocalDateTime.now());
+            customerRepo.save(customer);
+        }
     }
 
     @Transactional
@@ -86,19 +102,22 @@ public class AnalyticsAggregationService {
                         .averageDeliveryTimeMinutes(0.0)
                         .build());
 
-        delivery.setTotalDeliveries(delivery.getTotalDeliveries() + 1);
-        if (event.isOnTime()) {
-            delivery.setOnTimeDeliveries(delivery.getOnTimeDeliveries() + 1);
+        if ("CANCELLED".equals(event.getStatus())) {
+            delivery.setFailedDeliveries(delivery.getFailedDeliveries() + 1);
         } else {
-            delivery.setLateDeliveries(delivery.getLateDeliveries() + 1);
-        }
+            delivery.setTotalDeliveries(delivery.getTotalDeliveries() + 1);
+            if (event.isOnTime()) {
+                delivery.setOnTimeDeliveries(delivery.getOnTimeDeliveries() + 1);
+            } else {
+                delivery.setLateDeliveries(delivery.getLateDeliveries() + 1);
+            }
 
-        // Running average for delivery time
-        if (event.getDeliveryTimeMinutes() != null) {
-            double current = delivery.getAverageDeliveryTimeMinutes();
-            long count = delivery.getTotalDeliveries();
-            delivery.setAverageDeliveryTimeMinutes(
-                    ((current * (count - 1)) + event.getDeliveryTimeMinutes()) / count);
+            if (event.getDeliveryTimeMinutes() != null) {
+                double current = delivery.getAverageDeliveryTimeMinutes();
+                long count = delivery.getTotalDeliveries();
+                delivery.setAverageDeliveryTimeMinutes(
+                        ((current * (count - 1)) + event.getDeliveryTimeMinutes()) / count);
+            }
         }
 
         double slaBreachRate = delivery.getTotalDeliveries() > 0

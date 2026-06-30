@@ -35,8 +35,14 @@ public class SalesAnalytics {
     private BigDecimal averageOrderValue;
     private BigDecimal totalCommission;
 
-    @Column(updatedAt = true)
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @PreUpdate
+    @PrePersist
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 
     public enum Period {
         DAILY, WEEKLY, MONTHLY
