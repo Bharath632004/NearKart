@@ -1,0 +1,26 @@
+# Copy this file to terraform.tfvars and fill in your values
+# NEVER commit terraform.tfvars to Git
+
+aws_region  = "ap-south-1"
+environment = "dev"
+project     = "nearkart"
+
+vpc_cidr             = "10.0.0.0/16"
+availability_zones   = ["ap-south-1a", "ap-south-1b"]
+private_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
+public_subnet_cidrs  = ["10.0.101.0/24", "10.0.102.0/24"]
+
+db_instance_class = "db.t3.micro"
+db_name           = "nearkartdb"
+db_username       = "nearkart_admin"
+db_password       = "CHANGE_ME_USE_SECRETS_MANAGER"
+
+redis_node_type = "cache.t3.micro"
+
+eks_node_instance_type = "t3.medium"
+eks_node_desired_size  = 2
+eks_node_max_size      = 4
+eks_node_min_size      = 1
+
+domain_name = "nearkart.in"
+alert_email = "alerts@nearkart.in"
