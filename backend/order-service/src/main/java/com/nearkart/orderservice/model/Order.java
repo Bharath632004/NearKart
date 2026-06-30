@@ -13,40 +13,28 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private Long customerId;
-
-    private Long merchantId;
+    private Long shopId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private OrderStatus status = OrderStatus.PLACED;
+    private OrderStatus status = OrderStatus.PENDING;
 
-    @Column(nullable = false)
-    private BigDecimal totalAmount;
-
-    @Column(nullable = false)
-    private String deliveryAddress;
-
-    private String deliveryNotes;
-
-    private Long deliveryAgentId;
-
-    private LocalDateTime placedAt = LocalDateTime.now();
-    private LocalDateTime confirmedAt;
-    private LocalDateTime deliveredAt;
-    private LocalDateTime cancelledAt;
-
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "order", fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
-    public enum OrderStatus {
-        PLACED, CONFIRMED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
-    }
+    private BigDecimal totalAmount;
+
+    private String deliveryAddress;
+    private String deliveryPhone;
+
+    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime updatedAt = LocalDateTime.now();
 }
