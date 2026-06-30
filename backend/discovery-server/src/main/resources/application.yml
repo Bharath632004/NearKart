@@ -4,18 +4,61 @@ server:
 spring:
   application:
     name: discovery-server
+  security:
+    user:
+      # Overridden by SecurityConfig using eureka.security.* properties
+      name: admin
+      password: admin123
 
+# Eureka Security Credentials (used by SecurityConfig and referenced by clients)
 eureka:
+  security:
+    username: ${EUREKA_USERNAME:admin}
+    password: ${EUREKA_PASSWORD:admin123}
+
   instance:
-    hostname: localhost
+    hostname: ${EUREKA_HOSTNAME:localhost}
+    prefer-ip-address: false
+
   client:
+    # This server does NOT register itself or fetch registry
     register-with-eureka: false
     fetch-registry: false
     service-url:
-      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+      defaultZone: http://${eureka.security.username}:${eureka.security.password}@${eureka.instance.hostname}:${server.port}/eureka/
+
   server:
+    # Do not wait on startup for peers to sync (standalone mode)
     wait-time-in-ms-when-sync-empty: 0
+    # Reduce time to evict stale instances (in ms)
+    eviction-interval-timer-in-ms: 5000
+    # Enable self-preservation (disable only in dev)
+    enable-self-preservation: ${EUREKA_SELF_PRESERVATION:true}
+    # Renewal threshold
+    renewal-percent-threshold: 0.85
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+# Application info shown in /actuator/info
+info:
+  app:
+    name: NearKart Discovery Server
+    description: Eureka Service Registry for NearKart Microservices
+    version: 1.0.0
 
 logging:
   level:
     com.netflix: WARN
+    com.nearkart: INFO
+    org.springframework.cloud: INFO

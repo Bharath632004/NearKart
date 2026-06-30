@@ -1,0 +1,18 @@
+# Docker profile - used when running inside Docker/Docker Compose
+spring:
+  application:
+    name: discovery-server
+
+eureka:
+  instance:
+    hostname: discovery-server   # matches Docker Compose service name
+    prefer-ip-address: false
+
+  server:
+    enable-self-preservation: false  # disable in containerized environments
+    wait-time-in-ms-when-sync-empty: 0
+
+logging:
+  level:
+    com.netflix: WARN
+    com.nearkart: DEBUG

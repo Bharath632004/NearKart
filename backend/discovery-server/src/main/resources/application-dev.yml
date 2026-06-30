@@ -1,0 +1,15 @@
+# Development profile
+spring:
+  application:
+    name: discovery-server
+
+eureka:
+  server:
+    enable-self-preservation: false   # easier debugging in dev
+    eviction-interval-timer-in-ms: 3000
+
+logging:
+  level:
+    com.netflix.eureka: DEBUG
+    com.netflix.discovery: DEBUG
+    com.nearkart: DEBUG
