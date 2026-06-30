@@ -77,8 +77,13 @@ public class JwtService {
         return resolver.apply(claims);
     }
 
+    /**
+     * Decodes the Base64-encoded secret from application.yml.
+     * The secret MUST be a Base64-encoded string of at least 256 bits (32 bytes → 44 base64 chars).
+     * Example generation: openssl rand -base64 32
+     */
     private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtSecret.getBytes();
+        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
