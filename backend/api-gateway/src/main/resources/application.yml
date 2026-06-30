@@ -4,54 +4,160 @@ server:
 spring:
   application:
     name: api-gateway
+
+  # Redis for rate limiting
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
   cloud:
     gateway:
+      # Default filters applied to ALL routes
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 20
+            redis-rate-limiter.burstCapacity: 40
+            redis-rate-limiter.requestedTokens: 1
+            key-resolver: "#{@ipKeyResolver}"
+        - name: CircuitBreaker
+          args:
+            name: defaultCB
+            fallbackUri: forward:/fallback
+
       routes:
-        - id: user-service
+        # ─── Auth / User Service ───────────────────────────────────────────────
+        - id: user-service-public
           uri: lb://user-service
           predicates:
-            - Path=/api/users/**, /api/auth/**
+            - Path=/api/auth/**
           filters:
             - StripPrefix=0
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: user-service
 
+        - id: user-service-private
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: user-service
+
+        # ─── Product Service ───────────────────────────────────────────────────
         - id: product-service
           uri: lb://product-service
           predicates:
             - Path=/api/products/**
           filters:
             - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: product-service
 
+        # ─── Order Service ─────────────────────────────────────────────────────
         - id: order-service
           uri: lb://order-service
           predicates:
             - Path=/api/orders/**
           filters:
             - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: order-service
 
+        # ─── Shop Service ──────────────────────────────────────────────────────
         - id: shop-service
           uri: lb://shop-service
           predicates:
             - Path=/api/shops/**
           filters:
             - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: shop-service
 
+      # Global CORS
       globalcors:
         corsConfigurations:
           '[/**]':
-            allowedOrigins: "http://localhost:3000"
-            allowedMethods: "GET,POST,PUT,DELETE,PATCH,OPTIONS"
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "${FRONTEND_URL:http://localhost:3000}"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
             allowedHeaders: "*"
+            exposedHeaders:
+              - Authorization
+              - X-Request-Id
             allowCredentials: true
+            maxAge: 3600
 
+# Eureka
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+    registry-fetch-interval-seconds: 5
   instance:
     prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
 
+# JWT
+jwt:
+  secret: ${JWT_SECRET:NearKartSuperSecretKey2024MustBe256BitsLongForHS256Algorithm!}
+  expiration: 86400000  # 24 hours in ms
+
+# Resilience4j Circuit Breaker
+resilience4j:
+  circuitbreaker:
+    instances:
+      defaultCB:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+  timelimiter:
+    instances:
+      defaultCB:
+        timeoutDuration: 5s
+
+# Actuator
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,routes
+        include: health,info,routes,metrics,prometheus,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.nearkart.gateway: DEBUG
+    reactor.netty: INFO
