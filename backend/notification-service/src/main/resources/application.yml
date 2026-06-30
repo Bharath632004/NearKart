@@ -1,0 +1,85 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: notification-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/nearkart_db
+    username: ${DB_USERNAME:nearkart}
+    password: ${DB_PASSWORD:nearkart123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: update    # use validate in prod after first run
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # ── JavaMail (Gmail SMTP example) ─────────────────────────────────
+  mail:
+    host:     ${SMTP_HOST:smtp.gmail.com}
+    port:     ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:noreply@nearkart.in}
+    password: ${SMTP_PASSWORD:}
+    from:     noreply@nearkart.in
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      key-deserializer:   org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset:  earliest
+      enable-auto-commit: false
+    listener:
+      ack-mode: MANUAL_IMMEDIATE
+
+# ── Firebase ──────────────────────────────────────────────────────────
+firebase:
+  service-account-file: firebase-service-account.json
+  # Place your downloaded service-account JSON at:
+  # src/main/resources/firebase-service-account.json
+
+# ── Twilio ────────────────────────────────────────────────────────────
+twilio:
+  account-sid:  ${TWILIO_ACCOUNT_SID:ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}
+  auth-token:   ${TWILIO_AUTH_TOKEN:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}
+  from-number:  ${TWILIO_FROM_NUMBER:+1234567890}
+
+# ── Kafka Topic Names ─────────────────────────────────────────────────
+nearkart:
+  kafka:
+    topics:
+      order-placed:         nearkart.order.placed
+      order-status-changed: nearkart.order.status.changed
+      order-cancelled:      nearkart.order.cancelled
+      payment-success:      nearkart.payment.success
+      payment-failed:       nearkart.payment.failed
+      refund-initiated:     nearkart.payment.refund.initiated
+    consumer:
+      group-id: notification-service-group
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    in.nearkart: DEBUG
+    com.google.firebase: WARN
+    com.twilio: WARN
+    org.apache.kafka: WARN

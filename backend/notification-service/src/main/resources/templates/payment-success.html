@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; }
+        .container { max-width: 600px; margin: 30px auto; background: #fff;
+                     border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
+        .header  { background: #34a853; color: #fff; padding: 24px; text-align: center; }
+        .body    { padding: 24px; color: #333; }
+        .amount  { font-size: 36px; font-weight: bold; color: #34a853; text-align: center; margin: 16px 0; }
+        .detail  { background: #f0fff4; border-left: 4px solid #34a853; padding: 16px; border-radius: 4px; }
+        .footer  { background: #f8f8f8; text-align: center; padding: 16px; font-size: 12px; color: #999; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header"><h1>✅ Payment Successful</h1></div>
+    <div class="body">
+        <p>Hi <strong th:text="${customerName}">Customer</strong>,</p>
+        <p>Your payment was processed successfully.</p>
+        <div class="amount">₹<span th:text="${amount}"></span></div>
+        <div class="detail">
+            <p><strong>Order #:</strong>     <span th:text="${orderNumber}"></span></p>
+            <p><strong>Payment ID:</strong>  <span th:text="${razorpayPaymentId}"></span></p>
+            <p><strong>Method:</strong>      <span th:text="${paymentMethod}"></span></p>
+            <p><strong>Date:</strong>        <span th:text="${paidAt}"></span></p>
+        </div>
+    </div>
+    <div class="footer">© 2026 NearKart</div>
+</div>
+</body>
+</html>

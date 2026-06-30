@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 30px auto; background: #fff;
+                     border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header  { background: #1a73e8; color: #fff; padding: 24px; text-align: center; }
+        .header h1 { margin: 0; font-size: 22px; }
+        .body    { padding: 24px; color: #333; }
+        .order-box { background: #f0f4ff; border-left: 4px solid #1a73e8;
+                     padding: 16px; border-radius: 4px; margin: 16px 0; }
+        .footer  { background: #f8f8f8; text-align: center; padding: 16px;
+                   font-size: 12px; color: #999; }
+        .btn     { display: inline-block; background: #1a73e8; color: #fff;
+                   padding: 12px 28px; border-radius: 4px; text-decoration: none;
+                   font-weight: bold; margin-top: 16px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🛍️ NearKart — Order Confirmed!</h1>
+    </div>
+    <div class="body">
+        <p>Hi <strong th:text="${customerName}">Customer</strong>,</p>
+        <p>Great news! Your order has been confirmed by the shop.</p>
+        <div class="order-box">
+            <p><strong>Order #:</strong> <span th:text="${orderNumber}"></span></p>
+            <p><strong>Shop:</strong>    <span th:text="${shopName}"></span></p>
+            <p><strong>Total:</strong>   ₹<span th:text="${totalAmount}"></span></p>
+            <p><strong>ETA:</strong>     <span th:text="${estimatedDelivery}">30 minutes</span></p>
+        </div>
+        <a class="btn" th:href="${trackUrl}">Track My Order</a>
+    </div>
+    <div class="footer">
+        © 2026 NearKart · <a href="#">Unsubscribe</a>
+    </div>
+</div>
+</body>
+</html>
