@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: nearkart-postgres
+    environment:
+      POSTGRES_DB: nearkart
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d  # auto-runs schema.sql on first start
+
+  redis:
+    image: redis:7
+    container_name: nearkart-redis
+    ports:
+      - "6379:6379"
+
+  user-service:
+    build: ../backend/user-service
+    container_name: nearkart-user-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkart
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: your_password
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  postgres_data:
