@@ -1,50 +1,43 @@
 # NearKart Database Design
 
-## Tech Stack
-- **PostgreSQL 15+** — Primary relational database
-- **Redis 7+** — Session caching, OTP storage, rate limiting
-- **Flyway** — Database migration management
+## Database: PostgreSQL 16 + PostGIS
 
-## Tables (35+)
+## Schema Files
 
-| Table | Description |
-|-------|-------------|
-| users | All platform users (customer, merchant, delivery, admin) |
-| roles / permissions | RBAC system |
-| otps | OTP storage (backed by Redis) |
-| refresh_tokens | JWT refresh token management |
-| addresses | User delivery addresses with GPS coordinates |
-| shop_categories | Shop type classification |
-| shops | Merchant shop profiles with geolocation |
-| brands | Product brands |
-| categories | Product categories (hierarchical) |
-| products | Product catalog per shop |
-| product_images | Multiple images per product |
-| inventory | Stock levels per product |
-| coupons | Discount coupon management |
-| wallets | User wallet balances |
-| wallet_transactions | Wallet credit/debit ledger |
-| orders | Customer orders |
-| order_items | Line items per order |
-| payments | Payment gateway records |
-| delivery_partners | Delivery partner profiles |
-| delivery_assignments | Order-to-partner assignment |
-| reviews | Reviews for product/shop/delivery |
-| notifications | Push notification records |
-| complaints | Customer complaints |
-| returns | Return requests |
-| refunds | Refund processing |
-| invoices | Order invoices |
-| settlements | Merchant settlement records |
-| commissions | Per-order commission tracking |
-| audit_logs | Admin action audit trail |
-| activity_logs | User activity tracking |
-| wishlists | Customer saved products |
-| carts | Shopping cart |
-| cart_items | Cart line items |
+| File | Tables |
+|---|---|
+| `V1__create_extensions.sql` | UUID, PostGIS, pg_trgm extensions |
+| `V2__create_auth_tables.sql` | users, roles, permissions, otp_records, refresh_tokens, sessions |
+| `V3__create_address_tables.sql` | addresses |
+| `V4__create_shop_tables.sql` | shops, shop_categories |
+| `V5__create_product_tables.sql` | brands, categories, subcategories, products, product_images |
+| `V6__create_inventory_tables.sql` | inventory |
+| `V7__create_order_tables.sql` | orders, order_items, coupons, offers |
+| `V8__create_payment_tables.sql` | payments, transactions, wallet, wallet_transactions, invoices, settlements, commission |
+| `V9__create_delivery_tables.sql` | delivery_partners, delivery_assignments |
+| `V10__create_engagement_tables.sql` | reviews, ratings, notifications, complaints, returns, refunds |
+| `V11__create_log_tables.sql` | audit_logs, activity_logs |
+| `V12__seed_data.sql` | Initial seed/reference data |
 
-## Running Migrations
+## Total Tables: 35
+
+## Naming Conventions
+- All table names: `snake_case`, plural
+- All column names: `snake_case`
+- Primary keys: `id` (UUID or BIGSERIAL)
+- Foreign keys: `{referenced_table_singular}_id`
+- Timestamps: `created_at`, `updated_at`, `deleted_at`
+- Soft deletes: `is_deleted BOOLEAN DEFAULT FALSE`
+- Boolean flags: `is_*` prefix
+
+## Run Migrations (Flyway)
 ```bash
-flyway -url=jdbc:postgresql://localhost:5432/nearkart \
-       -user=nearkart -password=nearkart123 migrate
+mvn flyway:migrate
+```
+
+## Run Manually
+```bash
+psql -U nearkart -d nearkart_db -f migrations/V1__create_extensions.sql
+psql -U nearkart -d nearkart_db -f migrations/V2__create_auth_tables.sql
+# ... continue in order
 ```
