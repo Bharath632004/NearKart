@@ -27,12 +27,14 @@ public class OtpServiceImpl implements OtpService {
     @Value("${nearkart.otp.expiry-minutes:5}")
     private int otpExpiryMinutes;
 
+    private static final int MAX_OTP_ATTEMPTS = 3;
+
     @Override
     @Transactional
     public void sendOtp(String phone, OtpPurpose purpose) {
         otpRepository.invalidateAllOtps(phone, purpose);
 
-        // FIX: Use 1_000_000 so that 999999 can be generated (nextInt upper bound is exclusive)
+        // nextInt upper bound is exclusive, so use 1_000_000 to allow 999999
         String otp = String.format("%06d", secureRandom.nextInt(1_000_000));
 
         OtpRecord record = OtpRecord.builder()
@@ -61,16 +63,16 @@ public class OtpServiceImpl implements OtpService {
         }
 
         if (!record.getOtp().equals(otp)) {
-            // FIX: Check BEFORE incrementing so the user sees the correct remaining count
-            // and is never shown a misleading message on the 3rd attempt
-            if (record.getAttempts() >= 2) {
+            // Check BEFORE incrementing: if already at max-1 attempts, this is the last allowed attempt
+            if (record.getAttempts() >= MAX_OTP_ATTEMPTS - 1) {
                 record.setIsUsed(true);
                 otpRepository.save(record);
                 throw new InvalidOtpException("Too many failed attempts. OTP invalidated.");
             }
             record.setAttempts(record.getAttempts() + 1);
             otpRepository.save(record);
-            throw new InvalidOtpException("Invalid OTP. Attempts remaining: " + (2 - record.getAttempts() + 1));
+            // After increment: remaining = MAX - current attempts
+            throw new InvalidOtpException("Invalid OTP. Attempts remaining: " + (MAX_OTP_ATTEMPTS - record.getAttempts()));
         }
 
         record.setIsUsed(true);
