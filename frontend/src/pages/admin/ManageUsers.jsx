@@ -1,51 +1,94 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../../components/Navbar';
-
-const USERS = [
-  { id: 1, name: 'C Bharath', email: 'bharath@example.com', role: 'CUSTOMER', status: 'Active', joined: '2026-01-10' },
-  { id: 2, name: 'Priya Sharma', email: 'priya@example.com', role: 'CUSTOMER', status: 'Active', joined: '2026-02-14' },
-  { id: 3, name: 'Venkat Rao', email: 'venkat@example.com', role: 'MERCHANT', status: 'Active', joined: '2026-01-05' },
-  { id: 4, name: 'Ramesh Delivery', email: 'ramesh@example.com', role: 'DELIVERY', status: 'Active', joined: '2026-03-20' },
-  { id: 5, name: 'Suresh Babu', email: 'suresh@example.com', role: 'CUSTOMER', status: 'Blocked', joined: '2026-04-01' },
-];
-
-const ROLE_COLORS = { CUSTOMER: '#1565c0', MERCHANT: '#7b1fa2', DELIVERY: '#e65100', ADMIN: '#2e7d32' };
-
-const s = {
-  page: { minHeight: '100vh', background: '#f5f7fa' },
-  container: { maxWidth: 1000, margin: '0 auto', padding: 32 },
-  table: { width: '100%', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,.07)', borderCollapse: 'collapse' },
-  th: { background: '#1a73e8', color: '#fff', padding: '12px 16px', textAlign: 'left', fontWeight: 600 },
-  td: { padding: '12px 16px', borderBottom: '1px solid #f0f0f0' },
-  badge: { borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 600 },
-  search: { padding: '10px 16px', border: '1px solid #ddd', borderRadius: 8, width: '100%', maxWidth: 350, marginBottom: 20, fontSize: 14 },
-};
+import Loader from '../../components/Loader';
+import ErrorMsg from '../../components/ErrorMsg';
+import { getAllUsersApi, updateUserStatusApi, deleteUserApi } from '../../api/adminApi';
 
 export default function ManageUsers() {
-  const [users, setUsers] = useState(USERS);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const toggle = (id) => setUsers(u => u.map(x => x.id === id ? { ...x, status: x.status === 'Active' ? 'Blocked' : 'Active' } : x));
-  const filtered = users.filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
+  const [roleFilter, setRoleFilter] = useState('ALL');
+
+  const load = () => getAllUsersApi().then(r => setUsers(r.data || []))
+    .catch(() => setError('Failed to load users')).finally(() => setLoading(false));
+
+  useEffect(() => { load(); }, []);
+
+  const handleToggle = async (user) => {
+    try { await updateUserStatusApi(user.id, user.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE'); load(); }
+    catch { setError('Update failed'); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this user?')) return;
+    try { await deleteUserApi(id); load(); } catch { setError('Delete failed'); }
+  };
+
+  const roles = ['ALL', 'CUSTOMER', 'MERCHANT', 'DELIVERY', 'ADMIN'];
+  const filtered = users.filter(u =>
+    (roleFilter === 'ALL' || u.role === roleFilter) &&
+    (u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()))
+  );
+
   return (
-    <div style={s.page}>
-      <Navbar role="ADMIN" />
-      <div style={s.container}>
-        <h2>👥 Manage Users</h2>
-        <input style={s.search} placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} />
-        <table style={s.table}>
-          <thead><tr>{['Name','Email','Role','Joined','Status','Action'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
-          <tbody>{filtered.map(u => (
-            <tr key={u.id}>
-              <td style={s.td}>{u.name}</td>
-              <td style={s.td}>{u.email}</td>
-              <td style={s.td}><span style={{ ...s.badge, background: (ROLE_COLORS[u.role]||'#888')+'22', color: ROLE_COLORS[u.role]||'#888' }}>{u.role}</span></td>
-              <td style={s.td}>{u.joined}</td>
-              <td style={s.td}><span style={{ ...s.badge, background: u.status==='Active' ? '#e8f5e9' : '#ffebee', color: u.status==='Active' ? '#2e7d32' : '#c62828' }}>{u.status}</span></td>
-              <td style={s.td}><button onClick={() => toggle(u.id)} style={{ background: u.status==='Active' ? '#ffebee' : '#e8f5e9', color: u.status==='Active' ? '#c62828' : '#2e7d32', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontWeight: 600 }}>{u.status==='Active' ? 'Block' : 'Unblock'}</button></td>
-            </tr>
-          ))}</tbody>
-        </table>
+    <div>
+      <Navbar />
+      <div style={styles.page}>
+        <h2 style={styles.heading}>👥 Manage Users</h2>
+        <div style={styles.toolbar}>
+          <input style={styles.search} placeholder="Search by name or email..."
+            value={search} onChange={e => setSearch(e.target.value)} />
+          <div style={styles.filters}>
+            {roles.map(r => (
+              <button key={r} style={{ ...styles.fBtn, background: roleFilter === r ? '#e94560' : '#eee', color: roleFilter === r ? '#fff' : '#333' }}
+                onClick={() => setRoleFilter(r)}>{r}</button>
+            ))}
+          </div>
+        </div>
+        <ErrorMsg msg={error} />
+        {loading ? <Loader /> : filtered.length === 0 ? <p style={{ color: '#888' }}>No users found.</p> : (
+          <table style={styles.table}>
+            <thead><tr style={styles.th}>{['Name','Email','Role','Phone','Status','Actions'].map(h => <th key={h} style={styles.thCell}>{h}</th>)}</tr></thead>
+            <tbody>
+              {filtered.map(u => (
+                <tr key={u.id} style={styles.tr}>
+                  <td style={styles.td}>{u.name}</td>
+                  <td style={styles.td}>{u.email}</td>
+                  <td style={styles.td}><span style={styles.roleBadge}>{u.role}</span></td>
+                  <td style={styles.td}>{u.phone || '-'}</td>
+                  <td style={styles.td}><span style={{ ...styles.badge, background: u.status === 'ACTIVE' ? '#22c55e' : '#ef4444' }}>{u.status}</span></td>
+                  <td style={styles.td}>
+                    <button style={styles.toggleBtn} onClick={() => handleToggle(u)}>
+                      {u.status === 'ACTIVE' ? 'Block' : 'Unblock'}
+                    </button>
+                    <button style={styles.delBtn} onClick={() => handleDelete(u.id)}>🗑</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 }
+
+const styles = {
+  page: { padding: '24px 32px', maxWidth: 1100, margin: '0 auto' },
+  heading: { color: '#1a1a2e', marginBottom: 16 },
+  toolbar: { display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' },
+  search: { padding: '9px 14px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, minWidth: 250 },
+  filters: { display: 'flex', gap: 6, flexWrap: 'wrap' },
+  fBtn: { padding: '6px 12px', border: 'none', borderRadius: 16, cursor: 'pointer', fontSize: 12 },
+  table: { width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' },
+  th: { background: '#1a1a2e', color: '#fff' },
+  thCell: { padding: '10px 14px', textAlign: 'left', fontSize: 13 },
+  tr: { borderBottom: '1px solid #f0f0f0' },
+  td: { padding: '10px 14px', fontSize: 14 },
+  badge: { borderRadius: 12, padding: '2px 10px', color: '#fff', fontSize: 12 },
+  roleBadge: { background: '#e0e7ff', color: '#4f46e5', borderRadius: 10, padding: '2px 8px', fontSize: 12 },
+  toggleBtn: { background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', marginRight: 6, fontSize: 12 },
+  delBtn: { background: '#ef4444', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12 },
+};

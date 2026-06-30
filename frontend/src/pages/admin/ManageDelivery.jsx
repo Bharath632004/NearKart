@@ -1,45 +1,77 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Navbar from '../../components/Navbar';
-
-const PARTNERS = [
-  { id: 1, name: 'Ramesh Delivery', phone: '9876543211', area: 'Vanikamdinne', deliveries: 128, status: 'Online', rating: 4.8 },
-  { id: 2, name: 'Kumar Reddy', phone: '9876543212', area: 'Gandhi Nagar', deliveries: 95, status: 'Offline', rating: 4.5 },
-  { id: 3, name: 'Anil Kumar', phone: '9876543213', area: 'Market Area', deliveries: 210, status: 'Online', rating: 4.9 },
-  { id: 4, name: 'Siva Prasad', phone: '9876543214', area: 'Station Road', deliveries: 67, status: 'Online', rating: 4.3 },
-];
-
-const s = {
-  page: { minHeight: '100vh', background: '#f5f7fa' },
-  container: { maxWidth: 950, margin: '0 auto', padding: 32 },
-  table: { width: '100%', background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,.07)', borderCollapse: 'collapse' },
-  th: { background: '#e65100', color: '#fff', padding: '12px 16px', textAlign: 'left', fontWeight: 600 },
-  td: { padding: '12px 16px', borderBottom: '1px solid #f0f0f0' },
-  badge: { borderRadius: 12, padding: '2px 10px', fontSize: 12, fontWeight: 600 },
-};
+import Loader from '../../components/Loader';
+import ErrorMsg from '../../components/ErrorMsg';
+import { getAllDeliveryPartnersApi, approveDeliveryPartnerApi } from '../../api/adminApi';
 
 export default function ManageDelivery() {
-  const [partners, setPartners] = useState(PARTNERS);
-  const remove = (id) => setPartners(p => p.filter(x => x.id !== id));
+  const [partners, setPartners] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState('ALL');
+
+  const load = () => getAllDeliveryPartnersApi().then(r => setPartners(r.data || []))
+    .catch(() => setError('Failed to load')).finally(() => setLoading(false));
+
+  useEffect(() => { load(); }, []);
+
+  const handleApprove = async (id) => {
+    try { await approveDeliveryPartnerApi(id); load(); } catch { setError('Approve failed'); }
+  };
+
+  const statuses = ['ALL', 'PENDING', 'APPROVED'];
+  const filtered = filter === 'ALL' ? partners : partners.filter(p => p.status === filter);
+  const sc = (s) => ({ PENDING:'#f59e0b', APPROVED:'#22c55e' }[s] || '#888');
+
   return (
-    <div style={s.page}>
-      <Navbar role="ADMIN" />
-      <div style={s.container}>
-        <h2>🚴 Delivery Partners</h2>
-        <table style={s.table}>
-          <thead><tr>{['Name','Phone','Area','Deliveries','Rating','Status','Action'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
-          <tbody>{partners.map(p => (
-            <tr key={p.id}>
-              <td style={s.td}>{p.name}</td>
-              <td style={s.td}>{p.phone}</td>
-              <td style={s.td}>{p.area}</td>
-              <td style={s.td}>{p.deliveries}</td>
-              <td style={s.td}>⭐ {p.rating}</td>
-              <td style={s.td}><span style={{ ...s.badge, background: p.status==='Online' ? '#e8f5e9' : '#f5f5f5', color: p.status==='Online' ? '#2e7d32' : '#888' }}>{p.status}</span></td>
-              <td style={s.td}><button onClick={() => remove(p.id)} style={{ background: '#ffebee', color: '#c62828', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}>Remove</button></td>
-            </tr>
-          ))}</tbody>
-        </table>
+    <div>
+      <Navbar />
+      <div style={styles.page}>
+        <h2 style={styles.heading}>🚴 Manage Delivery Partners</h2>
+        <div style={styles.filters}>
+          {statuses.map(s => (
+            <button key={s} style={{ ...styles.fBtn, background: filter === s ? '#e94560' : '#eee', color: filter === s ? '#fff' : '#333' }}
+              onClick={() => setFilter(s)}>{s}</button>
+          ))}
+        </div>
+        <ErrorMsg msg={error} />
+        {loading ? <Loader /> : filtered.length === 0 ? <p style={{ color: '#888' }}>No delivery partners.</p> : (
+          <table style={styles.table}>
+            <thead><tr style={styles.th}>{['Name','Email','Phone','Vehicle','License','Status','Action'].map(h => <th key={h} style={styles.thCell}>{h}</th>)}</tr></thead>
+            <tbody>
+              {filtered.map(p => (
+                <tr key={p.id} style={styles.tr}>
+                  <td style={styles.td}>{p.name}</td>
+                  <td style={styles.td}>{p.email}</td>
+                  <td style={styles.td}>{p.phone || '-'}</td>
+                  <td style={styles.td}>{p.vehicleType || '-'}</td>
+                  <td style={styles.td}>{p.licenseNo || '-'}</td>
+                  <td style={styles.td}><span style={{ ...styles.badge, background: sc(p.status) }}>{p.status}</span></td>
+                  <td style={styles.td}>
+                    {p.status === 'PENDING' && (
+                      <button style={styles.approveBtn} onClick={() => handleApprove(p.id)}>✅ Approve</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
 }
+
+const styles = {
+  page: { padding: '24px 32px', maxWidth: 1100, margin: '0 auto' },
+  heading: { color: '#1a1a2e', marginBottom: 16 },
+  filters: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
+  fBtn: { padding: '6px 14px', border: 'none', borderRadius: 20, cursor: 'pointer', fontSize: 12 },
+  table: { width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' },
+  th: { background: '#1a1a2e', color: '#fff' },
+  thCell: { padding: '10px 14px', textAlign: 'left', fontSize: 13 },
+  tr: { borderBottom: '1px solid #f0f0f0' },
+  td: { padding: '10px 14px', fontSize: 14 },
+  badge: { borderRadius: 12, padding: '2px 10px', color: '#fff', fontSize: 12 },
+  approveBtn: { background: '#22c55e', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontSize: 12 },
+};
