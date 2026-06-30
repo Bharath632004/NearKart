@@ -5,6 +5,12 @@ plugins {
     id "com.google.gms.google-services"
 }
 
+def keystorePath     = System.getenv("KEYSTORE_PATH")
+def keystorePassword = System.getenv("KEYSTORE_PASSWORD")
+def keyAlias         = System.getenv("KEY_ALIAS")
+def keyPassword      = System.getenv("KEY_PASSWORD")
+def hasKeystore      = keystorePath && keystorePassword && keyAlias && keyPassword
+
 android {
     namespace "com.nearkart.app"
     compileSdk flutter.compileSdkVersion
@@ -29,22 +35,21 @@ android {
     }
 
     signingConfigs {
-        release {
-            def keystorePath = System.getenv("KEYSTORE_PATH")
-            if (keystorePath) {
+        if (hasKeystore) {
+            release {
                 storeFile file(keystorePath)
-                storePassword System.getenv("KEYSTORE_PASSWORD")
-                keyAlias System.getenv("KEY_ALIAS")
-                keyPassword System.getenv("KEY_PASSWORD")
+                storePassword keystorePassword
+                keyAlias keyAlias
+                keyPassword keyPassword
             }
         }
     }
 
     buildTypes {
         release {
-            // Uses env-based keystore if KEYSTORE_PATH is set, else falls back to debug signing
-            // (debug signing is only safe for local testing — set env vars for Play Store uploads)
-            signingConfig System.getenv("KEYSTORE_PATH") ? signingConfigs.release : signingConfigs.debug
+            // Uses env-based keystore if ALL keystore vars are set, else falls back to debug signing.
+            // Debug signing is only safe for local testing — set all env vars for Play Store uploads.
+            signingConfig hasKeystore ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
