@@ -1,5 +1,6 @@
 package com.nearkart.admin.controller;
 
+import com.nearkart.admin.client.UserServiceClient;
 import com.nearkart.admin.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,14 +16,13 @@ import org.springframework.web.bind.annotation.*;
 public class AdminUserController {
 
     private final AuditLogService auditLogService;
-
-    // TODO: inject UserServiceClient (Feign) to call user-service
+    private final UserServiceClient userServiceClient;
 
     @PutMapping("/{userId}/ban")
     public ResponseEntity<String> banUser(
             @PathVariable Long userId,
             @AuthenticationPrincipal UserDetails admin) {
-        // userServiceClient.banUser(userId);
+        userServiceClient.banUser(userId);
         auditLogService.log(admin.getUsername(), "BAN_USER", "USER", userId, null);
         return ResponseEntity.ok("User " + userId + " banned successfully");
     }
@@ -31,7 +31,7 @@ public class AdminUserController {
     public ResponseEntity<String> unbanUser(
             @PathVariable Long userId,
             @AuthenticationPrincipal UserDetails admin) {
-        // userServiceClient.unbanUser(userId);
+        userServiceClient.unbanUser(userId);
         auditLogService.log(admin.getUsername(), "UNBAN_USER", "USER", userId, null);
         return ResponseEntity.ok("User " + userId + " unbanned successfully");
     }
@@ -40,7 +40,7 @@ public class AdminUserController {
     public ResponseEntity<String> verifyUser(
             @PathVariable Long userId,
             @AuthenticationPrincipal UserDetails admin) {
-        // userServiceClient.verifyUser(userId);
+        userServiceClient.verifyUser(userId);
         auditLogService.log(admin.getUsername(), "VERIFY_USER", "USER", userId, null);
         return ResponseEntity.ok("User " + userId + " verified");
     }
@@ -50,7 +50,7 @@ public class AdminUserController {
             @PathVariable Long userId,
             @RequestParam String role,
             @AuthenticationPrincipal UserDetails admin) {
-        // userServiceClient.changeRole(userId, role);
+        userServiceClient.changeRole(userId, role);
         auditLogService.log(admin.getUsername(), "CHANGE_ROLE", "USER", userId, "New role: " + role);
         return ResponseEntity.ok("Role updated to " + role + " for user " + userId);
     }

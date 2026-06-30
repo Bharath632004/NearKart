@@ -1,5 +1,7 @@
 package com.nearkart.admin.controller;
 
+import com.nearkart.admin.client.MerchantServiceClient;
+import com.nearkart.admin.client.UserServiceClient;
 import com.nearkart.admin.dto.DashboardStatsDTO;
 import com.nearkart.admin.repository.CouponRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,17 +16,18 @@ import org.springframework.web.bind.annotation.*;
 public class AdminDashboardController {
 
     private final CouponRepository couponRepository;
+    private final UserServiceClient userServiceClient;
+    private final MerchantServiceClient merchantServiceClient;
 
-    // TODO: inject user/merchant/order feign clients and populate real counts
     @GetMapping("/stats")
     public ResponseEntity<DashboardStatsDTO> getStats() {
         long activeCoupons = couponRepository.findByActive(true).size();
         DashboardStatsDTO stats = new DashboardStatsDTO(
-            0L, // totalUsers       - wire from user-service
-            0L, // totalMerchants   - wire from merchant-service
-            0L, // totalOrders      - wire from order-service
-            0L, // pendingApprovals - wire from merchant-service
-            0L, // openRefunds      - wire from payment-service
+            userServiceClient.getUserCount(),
+            merchantServiceClient.getMerchantCount(),
+            0L,
+            merchantServiceClient.getPendingApprovalCount(),
+            0L,
             activeCoupons
         );
         return ResponseEntity.ok(stats);
