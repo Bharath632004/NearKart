@@ -4,6 +4,7 @@ import com.nearkart.shopservice.dto.ShopRequest;
 import com.nearkart.shopservice.dto.ShopResponse;
 import com.nearkart.shopservice.exception.ShopNotFoundException;
 import com.nearkart.shopservice.model.Shop;
+import com.nearkart.shopservice.model.ShopCategory;
 import com.nearkart.shopservice.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -112,6 +113,24 @@ public class ShopServiceImpl implements ShopService {
         shopRepository.deleteById(id);
     }
 
+    @Override
+    public List<ShopResponse> getShopsByCity(String city) {
+        return shopRepository.findByCityAndActiveTrue(city)
+                .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ShopResponse> getShopsByCategory(ShopCategory category) {
+        return shopRepository.findByCategory(category)
+                .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ShopResponse> getActiveShops() {
+        return shopRepository.findByActiveTrue()
+                .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
     private ShopResponse toResponse(Shop s) {
         return ShopResponse.builder()
                 .id(s.getId()).name(s.getName()).description(s.getDescription())
@@ -120,7 +139,7 @@ public class ShopServiceImpl implements ShopService {
                 .latitude(s.getLatitude()).longitude(s.getLongitude())
                 .active(s.isActive()).verified(s.isVerified())
                 .phone(s.getPhone()).email(s.getEmail()).category(s.getCategory())
-                .createdAt(s.getCreatedAt())
+                .createdAt(s.getCreatedAt()).updatedAt(s.getUpdatedAt())
                 .build();
     }
 }

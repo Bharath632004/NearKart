@@ -2,11 +2,16 @@ package com.nearkart.shopservice.model;
 
 public enum ShopCategory {
     GROCERY,
+    ELECTRONICS,
+    CLOTHING,
     PHARMACY,
     BAKERY,
     RESTAURANT,
-    ELECTRONICS,
-    CLOTHING,
     STATIONERY,
+    HARDWARE,
+    SALON,
+    VEGETABLES_FRUITS,
+    DAIRY,
+    GENERAL_STORE,
     OTHER
 }

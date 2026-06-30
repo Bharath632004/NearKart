@@ -2,6 +2,7 @@ package com.nearkart.shopservice.controller;
 
 import com.nearkart.shopservice.dto.ShopRequest;
 import com.nearkart.shopservice.dto.ShopResponse;
+import com.nearkart.shopservice.model.ShopCategory;
 import com.nearkart.shopservice.service.ShopService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,9 +34,24 @@ public class ShopController {
         return ResponseEntity.ok(shopService.getAllShops());
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<List<ShopResponse>> getActiveShops() {
+        return ResponseEntity.ok(shopService.getActiveShops());
+    }
+
     @GetMapping("/merchant/{merchantId}")
     public ResponseEntity<List<ShopResponse>> getByMerchant(@PathVariable Long merchantId) {
         return ResponseEntity.ok(shopService.getShopsByMerchant(merchantId));
+    }
+
+    @GetMapping("/city/{city}")
+    public ResponseEntity<List<ShopResponse>> getByCity(@PathVariable String city) {
+        return ResponseEntity.ok(shopService.getShopsByCity(city));
+    }
+
+    @GetMapping("/category/{category}")
+    public ResponseEntity<List<ShopResponse>> getByCategory(@PathVariable ShopCategory category) {
+        return ResponseEntity.ok(shopService.getShopsByCategory(category));
     }
 
     @GetMapping("/nearby")

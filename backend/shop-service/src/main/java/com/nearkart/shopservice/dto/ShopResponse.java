@@ -26,4 +26,5 @@ public class ShopResponse {
     private String email;
     private ShopCategory category;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
