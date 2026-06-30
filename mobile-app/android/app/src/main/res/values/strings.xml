@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NearKart</string>
+    <!--
+        STEP 1: Get your Google Maps API Key:
+          1. Go to https://console.cloud.google.com/apis/credentials
+          2. Click "Create Credentials" > "API Key"
+          3. Enable these APIs in your project:
+             - Maps SDK for Android
+             - Maps SDK for iOS
+             - Directions API
+             - Places API
+             - Geocoding API
+          4. (Recommended) Restrict the key to your app's package name
+             under "Application restrictions" > "Android apps"
+
+        STEP 2: Replace YOUR_GOOGLE_MAPS_API_KEY below with your key
+    -->
+    <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">YOUR_GOOGLE_MAPS_API_KEY</string>
+</resources>
