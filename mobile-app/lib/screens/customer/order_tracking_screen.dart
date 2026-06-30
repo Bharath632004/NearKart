@@ -29,7 +29,6 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Future<void> _simulateTracking() async {
-    // TODO: Replace with real-time WebSocket or polling from API
     final statuses = [
       OrderStatus.confirmed,
       OrderStatus.picked,
@@ -64,6 +63,29 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             onPressed: () => Navigator.pushNamedAndRemoveUntil(
                 context, AppRoutes.home, (r) => false),
           ),
+          actions: [
+            if (!_delivered)
+              IconButton(
+                icon: const Icon(Icons.map),
+                tooltip: 'Live Tracking',
+                onPressed: () {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.liveTracking,
+                    arguments: {
+                      'title': 'Live Order Tracking',
+                      'orderId': widget.orderId,
+                      'sourceLat': 17.3850,
+                      'sourceLng': 78.4867,
+                      'destinationLat': 17.3950,
+                      'destinationLng': 78.4967,
+                      'courierName': 'Ravi Kumar',
+                      'vehicleInfo': 'Bike • AP 39 XY 1234',
+                    },
+                  );
+                },
+              ),
+          ],
         ),
         body: SingleChildScrollView(
           child: Column(
@@ -110,6 +132,34 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   ],
                 ),
               ),
+              if (!_delivered)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.liveTracking,
+                          arguments: {
+                            'title': 'Live Order Tracking',
+                            'orderId': widget.orderId,
+                            'sourceLat': 17.3850,
+                            'sourceLng': 78.4867,
+                            'destinationLat': 17.3950,
+                            'destinationLng': 78.4967,
+                            'courierName': 'Ravi Kumar',
+                            'vehicleInfo': 'Bike • AP 39 XY 1234',
+                          },
+                        );
+                      },
+                      icon: const Icon(Icons.map),
+                      label: const Text('Open Live Tracking'),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 14),
               if (!_delivered)
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),

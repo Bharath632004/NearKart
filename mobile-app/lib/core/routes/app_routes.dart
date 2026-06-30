@@ -8,6 +8,7 @@ import '../../screens/customer/checkout_screen.dart';
 import '../../screens/customer/order_tracking_screen.dart';
 import '../../screens/delivery/delivery_home_screen.dart';
 import '../../screens/delivery/active_order_screen.dart';
+import '../../screens/common/live_tracking_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -19,6 +20,7 @@ class AppRoutes {
   static const String orderTracking = '/order-tracking';
   static const String deliveryHome = '/delivery-home';
   static const String activeOrder = '/active-order';
+  static const String liveTracking = '/live-tracking';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -42,6 +44,18 @@ class AppRoutes {
       case activeOrder:
         final order = settings.arguments as Map<String, dynamic>? ?? {};
         return _build(ActiveOrderScreen(order: order));
+      case liveTracking:
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
+        return _build(LiveTrackingScreen(
+          title: args['title'] ?? 'Live Tracking',
+          orderId: args['orderId'] ?? 'ORDER',
+          sourceLat: (args['sourceLat'] ?? 17.3850).toDouble(),
+          sourceLng: (args['sourceLng'] ?? 78.4867).toDouble(),
+          destinationLat: (args['destinationLat'] ?? 17.3950).toDouble(),
+          destinationLng: (args['destinationLng'] ?? 78.4967).toDouble(),
+          courierName: args['courierName'] ?? 'Delivery Partner',
+          vehicleInfo: args['vehicleInfo'] ?? 'Bike',
+        ));
       default:
         return _build(const Scaffold(
           body: Center(child: Text('Page not found')),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/routes/app_routes.dart';
 
 class ActiveOrderScreen extends StatefulWidget {
   final Map<String, dynamic> order;
@@ -22,7 +23,31 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
   Widget build(BuildContext context) {
     final order = widget.order;
     return Scaffold(
-      appBar: AppBar(title: Text('Order ${order['id']}')),
+      appBar: AppBar(
+        title: Text('Order ${order['id']}'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.map),
+            tooltip: 'Open Map Tracking',
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                AppRoutes.liveTracking,
+                arguments: {
+                  'title': 'Delivery Route',
+                  'orderId': order['id'] ?? 'ORDER',
+                  'sourceLat': 17.3850,
+                  'sourceLng': 78.4867,
+                  'destinationLat': 17.3950,
+                  'destinationLng': 78.4967,
+                  'courierName': 'You',
+                  'vehicleInfo': 'Bike Delivery',
+                },
+              );
+            },
+          )
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -57,6 +82,30 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.liveTracking,
+                    arguments: {
+                      'title': 'Delivery Route',
+                      'orderId': order['id'] ?? 'ORDER',
+                      'sourceLat': 17.3850,
+                      'sourceLng': 78.4867,
+                      'destinationLat': 17.3950,
+                      'destinationLng': 78.4967,
+                      'courierName': 'You',
+                      'vehicleInfo': 'Bike Delivery',
+                    },
+                  );
+                },
+                icon: const Icon(Icons.map),
+                label: const Text('Open Live Route Map'),
+              ),
+            ),
             const SizedBox(height: 20),
             Text('Delivery Progress', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
@@ -81,7 +130,7 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
             _ProgressTile(
               title: 'Deliver Order',
               subtitle: 'Deliver to customer location',
-              active: _stage == 'picked',
+              active: _stage == 'picked' || _stage == 'delivering',
               completed: _stage == 'delivered',
               action: _stage == 'picked'
                   ? ElevatedButton(
@@ -161,7 +210,22 @@ class _ActiveOrderScreenState extends State<ActiveOrderScreen> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.liveTracking,
+                      arguments: {
+                        'title': 'Delivery Route',
+                        'orderId': order['id'] ?? 'ORDER',
+                        'sourceLat': 17.3850,
+                        'sourceLng': 78.4867,
+                        'destinationLat': 17.3950,
+                        'destinationLng': 78.4967,
+                        'courierName': 'You',
+                        'vehicleInfo': 'Bike Delivery',
+                      },
+                    );
+                  },
                   icon: const Icon(Icons.map),
                   label: const Text('Navigate'),
                 ),
