@@ -9,20 +9,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * WebSocket handler for real-time delivery partner location updates.
- * URL: /ws/tracking/{assignmentId}
- *
- * Partners connect and push location JSON:
- *   { "latitude": 17.5, "longitude": 78.5, "speedKmph": 25.0 }
- *
- * Customers/merchants connect to receive live location broadcasts.
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -31,60 +21,49 @@ public class LocationWebSocketHandler extends TextWebSocketHandler {
     private final LiveLocationService locationService;
     private final ObjectMapper objectMapper;
 
-    /** assignmentId → set of subscriber sessions */
-    private final Map<String, Map<String, WebSocketSession>> subscribers = new ConcurrentHashMap<>();
+    private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        String assignmentId = extractAssignmentId(session);
-        subscribers.computeIfAbsent(assignmentId, k -> new ConcurrentHashMap<>())
-                   .put(session.getId(), session);
-        log.info("WebSocket connected: sessionId={}, assignmentId={}", session.getId(), assignmentId);
+        String partnerId = extractPartnerId(session);
+        sessions.put(partnerId, session);
+        log.info("WebSocket connected: partnerId={}", partnerId);
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        String assignmentId = extractAssignmentId(session);
-        // Parse location update sent by delivery partner
-        UpdateLocationRequest locationReq = objectMapper.readValue(
-                message.getPayload(), UpdateLocationRequest.class);
-
-        // TODO: Extract real partnerId from JWT in WebSocket handshake headers
-        UUID partnerId    = UUID.randomUUID(); // placeholder
-        UUID assignmentUUID = UUID.fromString(assignmentId);
-
-        locationService.updateLocation(partnerId, assignmentUUID, locationReq);
-
-        // Broadcast location to all subscribers on this assignment
-        broadcastToAssignment(assignmentId, message.getPayload());
+        String partnerId = extractPartnerId(session);
+        UpdateLocationRequest req = objectMapper.readValue(message.getPayload(), UpdateLocationRequest.class);
+        locationService.updateLocation(UUID.fromString(partnerId), req);
+        session.sendMessage(new TextMessage("{\"status\":\"location_updated\"}"));
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        String assignmentId = extractAssignmentId(session);
-        Map<String, WebSocketSession> sessions = subscribers.get(assignmentId);
-        if (sessions != null) {
-            sessions.remove(session.getId());
-            if (sessions.isEmpty()) subscribers.remove(assignmentId);
-        }
-        log.info("WebSocket disconnected: sessionId={}", session.getId());
+        String partnerId = extractPartnerId(session);
+        sessions.remove(partnerId);
+        log.info("WebSocket disconnected: partnerId={}, status={}", partnerId, status);
     }
 
-    private void broadcastToAssignment(String assignmentId, String payload) {
-        Map<String, WebSocketSession> sessions = subscribers.getOrDefault(
-                assignmentId, Map.of());
-        sessions.values().forEach(s -> {
-            try {
-                if (s.isOpen()) s.sendMessage(new TextMessage(payload));
-            } catch (IOException e) {
-                log.warn("Failed to broadcast to session {}: {}", s.getId(), e.getMessage());
-            }
-        });
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        log.error("WebSocket transport error for session {}: {}", session.getId(), exception.getMessage());
     }
 
-    private String extractAssignmentId(WebSocketSession session) {
+    private String extractPartnerId(WebSocketSession session) {
         String path = session.getUri().getPath();
         String[] parts = path.split("/");
         return parts[parts.length - 1];
+    }
+
+    public void broadcastToSession(String targetPartnerId, String payload) {
+        WebSocketSession target = sessions.get(targetPartnerId);
+        if (target != null && target.isOpen()) {
+            try {
+                target.sendMessage(new TextMessage(payload));
+            } catch (Exception e) {
+                log.error("Failed to broadcast to {}: {}", targetPartnerId, e.getMessage());
+            }
+        }
     }
 }

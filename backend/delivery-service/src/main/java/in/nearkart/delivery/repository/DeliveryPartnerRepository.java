@@ -1,9 +1,6 @@
 package in.nearkart.delivery.repository;
 
 import in.nearkart.delivery.entity.DeliveryPartner;
-import in.nearkart.delivery.entity.PartnerStatus;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,21 +15,16 @@ public interface DeliveryPartnerRepository extends JpaRepository<DeliveryPartner
 
     Optional<DeliveryPartner> findByPhone(String phone);
 
+    Optional<DeliveryPartner> findByEmail(String email);
+
     boolean existsByPhone(String phone);
-    boolean existsByAadhaarNumber(String aadhaarNumber);
-    boolean existsByVehicleNumber(String vehicleNumber);
 
-    Page<DeliveryPartner> findByStatus(PartnerStatus status, Pageable pageable);
+    boolean existsByEmail(String email);
 
-    /**
-     * Find ONLINE partners within a given radius (Haversine formula).
-     * Radius is in kilometres.
-     */
     @Query(value = """
-        SELECT * FROM delivery_partners p
+        SELECT p.* FROM delivery_partners p
         WHERE p.status = 'ONLINE'
-          AND p.current_latitude IS NOT NULL
-          AND p.current_longitude IS NOT NULL
+          AND p.is_available = true
           AND (
             6371 * acos(
               cos(radians(:lat)) * cos(radians(p.current_latitude))
@@ -47,11 +39,12 @@ public interface DeliveryPartnerRepository extends JpaRepository<DeliveryPartner
               + sin(radians(:lat)) * sin(radians(p.current_latitude))
             )
         ) ASC
-        LIMIT :limit
+        LIMIT :maxResults
         """, nativeQuery = true)
     List<DeliveryPartner> findNearbyOnlinePartners(
             @Param("lat") double lat,
             @Param("lng") double lng,
             @Param("radiusKm") double radiusKm,
-            @Param("limit") int limit);
+            @Param("maxResults") int maxResults
+    );
 }

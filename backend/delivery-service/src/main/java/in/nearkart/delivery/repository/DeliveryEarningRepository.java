@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -17,6 +18,8 @@ public interface DeliveryEarningRepository extends JpaRepository<DeliveryEarning
 
     Page<DeliveryEarning> findByPartnerOrderByCreatedAtDesc(DeliveryPartner partner, Pageable pageable);
 
-    @Query("SELECT COALESCE(SUM(e.amount), 0) FROM DeliveryEarning e WHERE e.partner = :partner AND e.settled = false")
-    BigDecimal sumUnsettledEarnings(@Param("partner") DeliveryPartner partner);
+    List<DeliveryEarning> findByPartnerAndSettled(DeliveryPartner partner, boolean settled);
+
+    @Query("SELECT SUM(e.amount) FROM DeliveryEarning e WHERE e.partner = :partner AND e.settled = false")
+    BigDecimal sumUnsettledByPartner(@Param("partner") DeliveryPartner partner);
 }

@@ -1,6 +1,5 @@
 package in.nearkart.delivery.repository;
 
-import in.nearkart.delivery.entity.AssignmentStatus;
 import in.nearkart.delivery.entity.DeliveryAssignment;
 import in.nearkart.delivery.entity.DeliveryPartner;
 import org.springframework.data.domain.Page;
@@ -16,12 +15,5 @@ public interface DeliveryAssignmentRepository extends JpaRepository<DeliveryAssi
 
     Optional<DeliveryAssignment> findByOrderId(UUID orderId);
 
-    Optional<DeliveryAssignment> findByOrderNumber(String orderNumber);
-
     Page<DeliveryAssignment> findByPartnerOrderByCreatedAtDesc(DeliveryPartner partner, Pageable pageable);
-
-    Page<DeliveryAssignment> findByStatusOrderByCreatedAtDesc(AssignmentStatus status, Pageable pageable);
-
-    Optional<DeliveryAssignment> findByPartnerAndStatusIn(
-            DeliveryPartner partner, java.util.List<AssignmentStatus> statuses);
 }
