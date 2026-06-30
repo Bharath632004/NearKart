@@ -10,6 +10,7 @@ import in.nearkart.auth.service.OtpService;
 import in.nearkart.auth.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -30,6 +31,13 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+
+    // FIX: Read token expiry values from config to keep DB and JWT in sync
+    @Value("${nearkart.jwt.access-token-expiry-ms:900000}")
+    private long accessTokenExpiryMs;
+
+    @Value("${nearkart.jwt.refresh-token-expiry-ms:604800000}")
+    private long refreshTokenExpiryMs;
 
     @Override
     public AuthResponse register(RegisterRequest request) {
@@ -151,20 +159,23 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private void saveRefreshToken(User user, String token) {
+        // FIX: Derive DB expiry from config value instead of hardcoding plusDays(7)
+        // This keeps the DB record in sync with the actual JWT expiry in JwtUtil
         RefreshToken refreshToken = RefreshToken.builder()
                 .token(token)
                 .user(user)
-                .expiresAt(LocalDateTime.now().plusDays(7))
+                .expiresAt(LocalDateTime.now().plusSeconds(refreshTokenExpiryMs / 1000))
                 .build();
         refreshTokenRepository.save(refreshToken);
     }
 
     private AuthResponse buildAuthResponse(User user, String accessToken, String refreshToken) {
+        // FIX: Use config-driven expiry instead of hardcoded 900L seconds
         return AuthResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType("Bearer")
-                .expiresIn(900L)
+                .expiresIn(accessTokenExpiryMs / 1000)
                 .userId(user.getId())
                 .fullName(user.getFullName())
                 .phone(user.getPhone())

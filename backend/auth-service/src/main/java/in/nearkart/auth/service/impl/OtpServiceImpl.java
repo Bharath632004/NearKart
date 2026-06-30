@@ -32,7 +32,8 @@ public class OtpServiceImpl implements OtpService {
     public void sendOtp(String phone, OtpPurpose purpose) {
         otpRepository.invalidateAllOtps(phone, purpose);
 
-        String otp = String.format("%06d", secureRandom.nextInt(999999));
+        // FIX: Use 1_000_000 so that 999999 can be generated (nextInt upper bound is exclusive)
+        String otp = String.format("%06d", secureRandom.nextInt(1_000_000));
 
         OtpRecord record = OtpRecord.builder()
                 .phone(phone)
@@ -43,7 +44,8 @@ public class OtpServiceImpl implements OtpService {
 
         otpRepository.save(record);
 
-        // TODO: Integrate Twilio SMS here
+        // TODO: Integrate SMS gateway (e.g. Twilio or Fast2SMS) to send OTP
+        // Example: smsService.send(phone, "Your NearKart OTP is: " + otp);
         log.info("[DEV MODE] OTP for phone={} purpose={}: {}", phone, purpose, otp);
     }
 
@@ -59,14 +61,16 @@ public class OtpServiceImpl implements OtpService {
         }
 
         if (!record.getOtp().equals(otp)) {
-            record.setAttempts(record.getAttempts() + 1);
-            if (record.getAttempts() >= 3) {
+            // FIX: Check BEFORE incrementing so the user sees the correct remaining count
+            // and is never shown a misleading message on the 3rd attempt
+            if (record.getAttempts() >= 2) {
                 record.setIsUsed(true);
                 otpRepository.save(record);
                 throw new InvalidOtpException("Too many failed attempts. OTP invalidated.");
             }
+            record.setAttempts(record.getAttempts() + 1);
             otpRepository.save(record);
-            throw new InvalidOtpException("Invalid OTP. Attempts remaining: " + (3 - record.getAttempts()));
+            throw new InvalidOtpException("Invalid OTP. Attempts remaining: " + (2 - record.getAttempts() + 1));
         }
 
         record.setIsUsed(true);
