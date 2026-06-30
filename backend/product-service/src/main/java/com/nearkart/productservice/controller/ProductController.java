@@ -1,6 +1,7 @@
 package com.nearkart.productservice.controller;
 
-import com.nearkart.productservice.model.Product;
+import com.nearkart.productservice.dto.*;
+import com.nearkart.productservice.model.Category;
 import com.nearkart.productservice.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,57 +14,65 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class ProductController {
 
     private final ProductService productService;
 
-    @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllAvailable());
+    @PostMapping
+    public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(request));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.getById(id));
+    public ResponseEntity<ProductResponse> getProduct(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
     }
 
-    @GetMapping("/merchant/{merchantId}")
-    public ResponseEntity<List<Product>> getByMerchant(@PathVariable Long merchantId) {
-        return ResponseEntity.ok(productService.getByMerchant(merchantId));
+    @GetMapping
+    public ResponseEntity<List<ProductResponse>> getAllProducts() {
+        return ResponseEntity.ok(productService.getAllProducts());
     }
 
-    @GetMapping("/category/{category}")
-    public ResponseEntity<List<Product>> getByCategory(@PathVariable String category) {
-        return ResponseEntity.ok(productService.getByCategory(category));
+    @GetMapping("/shop/{shopId}")
+    public ResponseEntity<List<ProductResponse>> getByShop(@PathVariable Long shopId) {
+        return ResponseEntity.ok(productService.getProductsByShop(shopId));
+    }
+
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<List<ProductResponse>> getByCategory(@PathVariable Long categoryId) {
+        return ResponseEntity.ok(productService.getProductsByCategory(categoryId));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Product>> search(@RequestParam String name) {
-        return ResponseEntity.ok(productService.searchByName(name));
-    }
-
-    @PostMapping
-    public ResponseEntity<Product> create(@Valid @RequestBody Product product) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(productService.create(product));
+    public ResponseEntity<List<ProductResponse>> search(@RequestParam String keyword) {
+        return ResponseEntity.ok(productService.searchProducts(keyword));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> update(@PathVariable Long id, @RequestBody Product product) {
-        return ResponseEntity.ok(productService.update(id, product));
+    public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long id,
+                                                         @Valid @RequestBody ProductRequest request) {
+        return ResponseEntity.ok(productService.updateProduct(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
-        productService.softDelete(id);
-        return ResponseEntity.ok("Product deleted successfully");
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+        productService.deleteProduct(id);
+        return ResponseEntity.noContent().build();
     }
 
-    @PatchMapping("/{id}/stock")
-    public ResponseEntity<String> adjustStock(
-            @PathVariable Long id,
-            @RequestParam int quantity) {
-        productService.adjustStock(id, quantity);
-        return ResponseEntity.ok("Stock updated successfully");
+    @PatchMapping("/{id}/toggle")
+    public ResponseEntity<ProductResponse> toggleAvailability(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.toggleAvailability(id));
+    }
+
+    // Category endpoints
+    @PostMapping("/categories")
+    public ResponseEntity<Category> createCategory(@Valid @RequestBody CategoryRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(productService.createCategory(request));
+    }
+
+    @GetMapping("/categories")
+    public ResponseEntity<List<Category>> getAllCategories() {
+        return ResponseEntity.ok(productService.getAllCategories());
     }
 }
