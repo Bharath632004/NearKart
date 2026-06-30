@@ -1,0 +1,19 @@
+package com.nearkart.user.repository;
+
+import com.nearkart.user.entity.Address;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface AddressRepository extends JpaRepository<Address, UUID> {
+    List<Address> findByUserProfileUserId(UUID userId);
+
+    @Modifying
+    @Query("UPDATE Address a SET a.isDefault = false WHERE a.userProfile.userId = :userId")
+    void clearDefaultForUser(UUID userId);
+}
