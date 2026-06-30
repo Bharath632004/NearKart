@@ -3,40 +3,68 @@ package in.nearkart.notification.service;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
 import in.nearkart.notification.config.TwilioConfig;
+import in.nearkart.notification.dto.NotificationResponse;
+import in.nearkart.notification.dto.SmsRequest;
+import in.nearkart.notification.entity.*;
+import in.nearkart.notification.repository.NotificationLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class SmsService {
 
     private final TwilioConfig twilioConfig;
+    private final NotificationLogRepository logRepository;
 
-    @Async("notificationExecutor")
-    public void sendSms(String toPhoneNumber, String messageBody) {
+    @Async
+    public NotificationResponse sendSms(SmsRequest request) {
+        NotificationLog logEntry = NotificationLog.builder()
+                .userId(request.getUserId())
+                .channel(NotificationChannel.SMS)
+                .type(resolveType(request.getNotificationType()))
+                .recipient(request.getTo())
+                .message(request.getMessage())
+                .status(NotificationStatus.PENDING)
+                .build();
+        logRepository.save(logEntry);
+
         try {
             Message message = Message.creator(
-                    new PhoneNumber(toPhoneNumber),
+                    new PhoneNumber(request.getTo()),
                     new PhoneNumber(twilioConfig.getFromNumber()),
-                    messageBody
+                    request.getMessage()
             ).create();
 
-            log.info("SMS sent: to={}, sid={}, status={}",
-                    toPhoneNumber, message.getSid(), message.getStatus());
+            logEntry.setStatus(NotificationStatus.SENT);
+            logEntry.setExternalId(message.getSid());
+            logEntry.setDeliveredAt(LocalDateTime.now());
+            logRepository.save(logEntry);
+
+            log.info("SMS sent to {} sid={}", request.getTo(), message.getSid());
+            return NotificationResponse.builder()
+                    .success(true)
+                    .message("SMS sent")
+                    .externalId(message.getSid())
+                    .logId(logEntry.getId())
+                    .build();
         } catch (Exception e) {
-            log.error("SMS send failed to {}: {}", toPhoneNumber, e.getMessage());
+            log.error("SMS failed to {}: {}", request.getTo(), e.getMessage());
+            logEntry.setStatus(NotificationStatus.FAILED);
+            logEntry.setErrorMessage(e.getMessage());
+            logRepository.save(logEntry);
+            return NotificationResponse.builder().success(false).message(e.getMessage()).logId(logEntry.getId()).build();
         }
     }
 
-    /**
-     * Builds the standard NearKart SMS format.
-     */
-    public String buildOrderSms(String orderNumber, String status, String amount) {
-        return String.format(
-                "NearKart: Your order #%s is now %s. Amount: ₹%s. Track in app.",
-                orderNumber, status, amount);
+    private NotificationType resolveType(String type) {
+        if (type == null) return NotificationType.GENERAL;
+        try { return NotificationType.valueOf(type.toUpperCase()); }
+        catch (Exception e) { return NotificationType.GENERAL; }
     }
 }

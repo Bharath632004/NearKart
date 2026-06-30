@@ -1,85 +1,65 @@
 server:
-  port: 8088
+  port: ${SERVER_PORT:8085}
 
 spring:
   application:
     name: notification-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/nearkart_db
-    username: ${DB_USERNAME:nearkart}
-    password: ${DB_PASSWORD:nearkart123}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/nearkart_notifications}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 8
-      minimum-idle: 2
 
   jpa:
     hibernate:
-      ddl-auto: update    # use validate in prod after first run
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
 
-  # ── JavaMail (Gmail SMTP example) ─────────────────────────────────
   mail:
-    host:     ${SMTP_HOST:smtp.gmail.com}
-    port:     ${SMTP_PORT:587}
-    username: ${SMTP_USERNAME:noreply@nearkart.in}
-    password: ${SMTP_PASSWORD:}
-    from:     noreply@nearkart.in
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:your-email@gmail.com}
+    password: ${MAIL_PASSWORD:your-app-password}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+            required: true
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
-      key-deserializer:   org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      auto-offset-reset:  earliest
-      enable-auto-commit: false
-    listener:
-      ack-mode: MANUAL_IMMEDIATE
+      group-id: notification-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
 
-# ── Firebase ──────────────────────────────────────────────────────────
-firebase:
-  service-account-file: firebase-service-account.json
-  # Place your downloaded service-account JSON at:
-  # src/main/resources/firebase-service-account.json
-
-# ── Twilio ────────────────────────────────────────────────────────────
+# Twilio
 twilio:
-  account-sid:  ${TWILIO_ACCOUNT_SID:ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}
-  auth-token:   ${TWILIO_AUTH_TOKEN:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}
-  from-number:  ${TWILIO_FROM_NUMBER:+1234567890}
+  account-sid: ${TWILIO_ACCOUNT_SID:ACxxxxxxxxxxxxxxxx}
+  auth-token: ${TWILIO_AUTH_TOKEN:your_auth_token}
+  from-number: ${TWILIO_FROM_NUMBER:+1234567890}
 
-# ── Kafka Topic Names ─────────────────────────────────────────────────
-nearkart:
-  kafka:
-    topics:
-      order-placed:         nearkart.order.placed
-      order-status-changed: nearkart.order.status.changed
-      order-cancelled:      nearkart.order.cancelled
-      payment-success:      nearkart.payment.success
-      payment-failed:       nearkart.payment.failed
-      refund-initiated:     nearkart.payment.refund.initiated
-    consumer:
-      group-id: notification-service-group
+# Firebase
+firebase:
+  service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:{}}
+
+# Custom
+app:
+  mail:
+    from-name: NearKart
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics
-
-logging:
-  level:
-    in.nearkart: DEBUG
-    com.google.firebase: WARN
-    com.twilio: WARN
-    org.apache.kafka: WARN

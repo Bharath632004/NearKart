@@ -6,34 +6,36 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
-@Table(name = "device_tokens",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"userId", "token"}))
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name = "device_tokens")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class DeviceToken {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Column(nullable = false)
-    private UUID userId;
+    @Column(name = "user_id", nullable = false)
+    private String userId;
 
-    @Column(nullable = false, length = 500)
-    private String token;   // FCM registration token
+    @Column(name = "fcm_token", nullable = false, unique = true, length = 500)
+    private String fcmToken;
 
-    @Enumerated(EnumType.STRING)
-    private DevicePlatform platform;  // ANDROID / IOS / WEB
+    @Column(name = "device_type", length = 20)
+    private String deviceType; // ANDROID, IOS, WEB
 
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean isActive = true;
+    @Column(name = "active")
+    private boolean active = true;
 
-    @CreationTimestamp @Column(updatable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }
