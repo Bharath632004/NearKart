@@ -32,6 +32,15 @@ import ManageMerchants from './pages/admin/ManageMerchants';
 import ManageDelivery from './pages/admin/ManageDelivery';
 import AdminReports from './pages/admin/AdminReports';
 
+// fix: Role-based redirect from root instead of always going to /login
+function RootRedirect() {
+  const token = localStorage.getItem('nearkart_token');
+  const role = localStorage.getItem('nearkart_role');
+  if (!token) return <Navigate to="/login" />;
+  const roleMap = { CUSTOMER: '/customer', MERCHANT: '/merchant', DELIVERY: '/delivery', ADMIN: '/admin' };
+  return <Navigate to={roleMap[role] || '/login'} />;
+}
+
 function PrivateRoute({ children, role }) {
   const token = localStorage.getItem('nearkart_token');
   const userRole = localStorage.getItem('nearkart_role');
@@ -48,7 +57,8 @@ export default function App() {
           {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/" element={<Navigate to="/login" />} />
+          {/* fix: Smart role-based root redirect */}
+          <Route path="/" element={<RootRedirect />} />
 
           {/* Customer Routes */}
           <Route path="/customer" element={<PrivateRoute role="CUSTOMER"><CustomerDashboard /></PrivateRoute>} />
@@ -76,6 +86,9 @@ export default function App() {
           <Route path="/admin/merchants" element={<PrivateRoute role="ADMIN"><ManageMerchants /></PrivateRoute>} />
           <Route path="/admin/delivery" element={<PrivateRoute role="ADMIN"><ManageDelivery /></PrivateRoute>} />
           <Route path="/admin/reports" element={<PrivateRoute role="ADMIN"><AdminReports /></PrivateRoute>} />
+
+          {/* fix: Catch-all 404 redirect */}
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>
     </Provider>

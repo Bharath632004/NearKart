@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 const navStyles = {
   navbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 32px', background: '#1a73e8', color: '#fff' },
@@ -11,6 +11,9 @@ const navStyles = {
 
 export default function Navbar({ role }) {
   const navigate = useNavigate();
+  // fix: use useLocation for active link highlighting
+  const { pathname } = useLocation();
+
   const logout = () => {
     localStorage.removeItem('nearkart_token');
     localStorage.removeItem('nearkart_role');
@@ -51,7 +54,19 @@ export default function Navbar({ role }) {
       <Link to="/" style={navStyles.brand}>🛒 NearKart</Link>
       <ul style={navStyles.navLinks}>
         {(links[role] || []).map(l => (
-          <li key={l.to}><Link to={l.to} style={navStyles.link}>{l.label}</Link></li>
+          <li key={l.to}>
+            {/* fix: active link gets underline indicator */}
+            <Link
+              to={l.to}
+              style={{
+                ...navStyles.link,
+                borderBottom: pathname === l.to ? '2px solid #fff' : '2px solid transparent',
+                paddingBottom: 3,
+              }}
+            >
+              {l.label}
+            </Link>
+          </li>
         ))}
       </ul>
       <button style={navStyles.btn} onClick={logout}>Logout</button>

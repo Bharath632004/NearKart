@@ -19,6 +19,8 @@ const TOP_SHOPS = [
 ];
 
 const maxRev = Math.max(...WEEKLY.map(d => d.revenue));
+// fix: compute maxOrders dynamically instead of hardcoded 450
+const maxOrders = Math.max(...WEEKLY.map(d => d.orders));
 
 const s = {
   page: { minHeight: '100vh', background: '#f5f7fa' },
@@ -31,16 +33,16 @@ const s = {
 
 export default function AdminReports() {
   const [tab, setTab] = useState('revenue');
-  const totalRevenue = WEEKLY.reduce((a,b) => a+b.revenue, 0);
-  const totalOrders = WEEKLY.reduce((a,b) => a+b.orders, 0);
+  const totalRevenue = WEEKLY.reduce((a, b) => a + b.revenue, 0);
+  const totalOrders = WEEKLY.reduce((a, b) => a + b.orders, 0);
   return (
     <div style={s.page}>
       <Navbar role="ADMIN" />
       <div style={s.container}>
         <h2>📊 Reports & Analytics</h2>
         <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
-          {[['revenue','Weekly Revenue'],['orders','Weekly Orders'],['shops','Top Shops']].map(([key, label]) => (
-            <button key={key} onClick={() => setTab(key)} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, background: tab===key ? '#1a73e8' : '#e8eaf6', color: tab===key ? '#fff' : '#333' }}>{label}</button>
+          {[['revenue', 'Weekly Revenue'], ['orders', 'Weekly Orders'], ['shops', 'Top Shops']].map(([key, label]) => (
+            <button key={key} onClick={() => setTab(key)} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, background: tab === key ? '#1a73e8' : '#e8eaf6', color: tab === key ? '#fff' : '#333' }}>{label}</button>
           ))}
         </div>
 
@@ -50,7 +52,7 @@ export default function AdminReports() {
             {WEEKLY.map(d => (
               <div key={d.day} style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>{d.day}</div>
-                <div style={{ ...s.bar, width: `${(d.revenue/maxRev)*100}%` }}>₹{d.revenue.toLocaleString()}</div>
+                <div style={{ ...s.bar, width: `${(d.revenue / maxRev) * 100}%` }}>₹{d.revenue.toLocaleString()}</div>
               </div>
             ))}
           </div>
@@ -62,7 +64,8 @@ export default function AdminReports() {
             {WEEKLY.map(d => (
               <div key={d.day} style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>{d.day}</div>
-                <div style={{ ...s.bar, width: `${(d.orders/450)*100}%`, background: '#7b1fa2' }}>{d.orders} orders</div>
+                {/* fix: use dynamic maxOrders instead of hardcoded 450 */}
+                <div style={{ ...s.bar, width: `${(d.orders / maxOrders) * 100}%`, background: '#7b1fa2' }}>{d.orders} orders</div>
               </div>
             ))}
           </div>
@@ -71,9 +74,9 @@ export default function AdminReports() {
         {tab === 'shops' && (
           <div style={s.card}>
             <h3 style={{ marginTop: 0 }}>Top Performing Shops</h3>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead><tr>{['Shop','Orders','Revenue'].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
-              <tbody>{TOP_SHOPS.map(sh=>(<tr key={sh.name}><td style={s.td}>{sh.name}</td><td style={s.td}>{sh.orders}</td><td style={s.td}>₹{sh.revenue.toLocaleString()}</td></tr>))}</tbody>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr>{['Shop', 'Orders', 'Revenue'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+              <tbody>{TOP_SHOPS.map(sh => (<tr key={sh.name}><td style={s.td}>{sh.name}</td><td style={s.td}>{sh.orders}</td><td style={s.td}>₹{sh.revenue.toLocaleString()}</td></tr>))}</tbody>
             </table>
           </div>
         )}

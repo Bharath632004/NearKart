@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 
-const s = {
+const styles = {
   page: { minHeight: '100vh', background: '#f5f7fa' },
   header: { padding: '24px 32px', fontSize: 22, fontWeight: 700 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 20, padding: '0 32px 32px' },
@@ -10,7 +10,7 @@ const s = {
   shopIcon: { fontSize: 42, marginBottom: 10 },
   name: { fontWeight: 700, fontSize: 16 },
   meta: { color: '#666', fontSize: 13, marginTop: 4 },
-  badge: { display:'inline-block', background:'#e8f5e9', color:'#2e7d32', borderRadius:12, padding:'2px 10px', fontSize:12, marginTop:8 },
+  badge: { display: 'inline-block', background: '#e8f5e9', color: '#2e7d32', borderRadius: 12, padding: '2px 10px', fontSize: 12, marginTop: 8 },
 };
 
 const MOCK_SHOPS = [
@@ -26,25 +26,32 @@ export default function ShopList() {
   const [shops, setShops] = useState([]);
   const [search, setSearch] = useState('');
   useEffect(() => { setShops(MOCK_SHOPS); }, []);
-  const filtered = shops.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.category.toLowerCase().includes(search.toLowerCase()));
+
+  // fix: renamed filter param from 's' to 'shop' to avoid shadowing the styles object
+  const filtered = shops.filter(shop =>
+    shop.name.toLowerCase().includes(search.toLowerCase()) ||
+    shop.category.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <div style={s.page}>
+    <div style={styles.page}>
       <Navbar role="CUSTOMER" />
       <div style={{ padding: '24px 32px' }}>
         <h2 style={{ margin: 0 }}>🏪 Shops Near You</h2>
         <input
           placeholder="Search shops or category..."
-          value={search} onChange={e => setSearch(e.target.value)}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
           style={{ marginTop: 16, padding: '10px 16px', width: '100%', maxWidth: 400, borderRadius: 8, border: '1px solid #ddd', fontSize: 14 }}
         />
       </div>
-      <div style={s.grid}>
+      <div style={styles.grid}>
         {filtered.map(shop => (
-          <Link key={shop.id} to={`/customer/shops/${shop.id}/products`} style={s.card}>
-            <div style={s.shopIcon}>🏪</div>
-            <div style={s.name}>{shop.name}</div>
-            <div style={s.meta}>{shop.category} · {shop.distance}</div>
-            <span style={s.badge}>⭐ {shop.rating}</span>
+          <Link key={shop.id} to={`/customer/shops/${shop.id}/products`} style={styles.card}>
+            <div style={styles.shopIcon}>🏪</div>
+            <div style={styles.name}>{shop.name}</div>
+            <div style={styles.meta}>{shop.category} · {shop.distance}</div>
+            <span style={styles.badge}>⭐ {shop.rating}</span>
           </Link>
         ))}
       </div>

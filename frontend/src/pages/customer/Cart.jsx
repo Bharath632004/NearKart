@@ -1,11 +1,25 @@
 import React, { useState } from 'react';
 import Navbar from '../../components/Navbar';
 
-const MOCK_CART = [
-  { id: 1, name: 'Rice (5 kg)', price: 250, qty: 2, emoji: '🌾' },
-  { id: 2, name: 'Toor Dal (1 kg)', price: 120, qty: 1, emoji: '🫘' },
-  { id: 3, name: 'Sunflower Oil (1 L)', price: 180, qty: 1, emoji: '🫙' },
+const MOCK_PRODUCTS = [
+  { id: 1, name: 'Rice (5 kg)', price: 250, emoji: '🌾' },
+  { id: 2, name: 'Toor Dal (1 kg)', price: 120, emoji: '🫘' },
+  { id: 3, name: 'Sunflower Oil (1 L)', price: 180, emoji: '🫙' },
+  { id: 4, name: 'Sugar (1 kg)', price: 45, emoji: '🍬' },
+  { id: 5, name: 'Milk (500 ml)', price: 28, emoji: '🥛' },
+  { id: 6, name: 'Eggs (12 pcs)', price: 72, emoji: '🥚' },
 ];
+
+// fix: Read cart from localStorage (persisted by ProductList) instead of hardcoded MOCK_CART
+function buildCartItems(cartMap) {
+  return Object.entries(cartMap)
+    .map(([id, qty]) => {
+      const product = MOCK_PRODUCTS.find(p => p.id === Number(id));
+      if (!product) return null;
+      return { ...product, qty };
+    })
+    .filter(Boolean);
+}
 
 const s = {
   page: { minHeight: '100vh', background: '#f5f7fa' },
@@ -19,10 +33,38 @@ const s = {
 };
 
 export default function Cart() {
-  const [items, setItems] = useState(MOCK_CART);
+  const [items, setItems] = useState(() => {
+    const saved = localStorage.getItem('nearkart_cart');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return buildCartItems(parsed);
+    }
+    // fallback default items if nothing in localStorage
+    return [
+      { id: 1, name: 'Rice (5 kg)', price: 250, qty: 2, emoji: '🌾' },
+      { id: 2, name: 'Toor Dal (1 kg)', price: 120, qty: 1, emoji: '🫘' },
+      { id: 3, name: 'Sunflower Oil (1 L)', price: 180, qty: 1, emoji: '🫙' },
+    ];
+  });
+
   const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const remove = (id) => setItems(prev => prev.filter(i => i.id !== id));
+
+  const remove = (id) => {
+    setItems(prev => {
+      const updated = prev.filter(i => i.id !== id);
+      const cartMap = {};
+      updated.forEach(i => { cartMap[i.id] = i.qty; });
+      localStorage.setItem('nearkart_cart', JSON.stringify(cartMap));
+      return updated;
+    });
+  };
+
   const [ordered, setOrdered] = useState(false);
+
+  const placeOrder = () => {
+    localStorage.removeItem('nearkart_cart');
+    setOrdered(true);
+  };
 
   return (
     <div style={s.page}>
@@ -50,7 +92,7 @@ export default function Cart() {
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 18 }}>
                 <span>Total</span><span>₹{total}</span>
               </div>
-              <button style={s.orderBtn} onClick={() => setOrdered(true)}>Place Order 🚀</button>
+              <button style={s.orderBtn} onClick={placeOrder}>Place Order 🚀</button>
             </div>
           </>
         )}

@@ -15,8 +15,13 @@ export default function ProductList() {
   const { shopId } = useParams();
   const [cart, setCart] = useState({});
 
+  // fix: persist cart to localStorage so Cart.jsx can read it
   const addToCart = (product) => {
-    setCart(prev => ({ ...prev, [product.id]: (prev[product.id] || 0) + 1 }));
+    setCart(prev => {
+      const updated = { ...prev, [product.id]: (prev[product.id] || 0) + 1 };
+      localStorage.setItem('nearkart_cart', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);

@@ -14,7 +14,7 @@ const s = {
   th: { background: '#1a73e8', color: '#fff', padding: '12px 16px', textAlign: 'left', fontWeight: 600 },
   td: { padding: '12px 16px', borderBottom: '1px solid #f0f0f0' },
   form: { background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 10px rgba(0,0,0,.07)', marginBottom: 24 },
-  input: { padding: '8px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, marginRight: 8 },
+  input: { padding: '8px 12px', border: '1px solid #ddd', borderRadius: 8, fontSize: 14, marginRight: 8, marginBottom: 8 },
   btn: { background: '#1a73e8', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', fontWeight: 600 },
   delBtn: { background: '#ffebee', color: '#c62828', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' },
 };
@@ -35,13 +35,22 @@ export default function ManageProducts() {
         <h2>🛍️ Manage Products</h2>
         <div style={s.form}>
           <h4 style={{ marginTop: 0 }}>Add New Product</h4>
-          {['name','price','stock','category'].map(f => (
-            <input key={f} style={s.input} placeholder={f.charAt(0).toUpperCase()+f.slice(1)} value={form[f]} onChange={e => setForm(v => ({ ...v, [f]: e.target.value }))} />
-          ))}
-          <button style={s.btn} onClick={add}>+ Add</button>
+          {/* fix: flex-wrap so inputs don't overflow on small screens */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            {['name', 'price', 'stock', 'category'].map(f => (
+              <input
+                key={f}
+                style={s.input}
+                placeholder={f.charAt(0).toUpperCase() + f.slice(1)}
+                value={form[f]}
+                onChange={e => setForm(v => ({ ...v, [f]: e.target.value }))}
+              />
+            ))}
+            <button style={s.btn} onClick={add}>+ Add</button>
+          </div>
         </div>
         <table style={s.table}>
-          <thead><tr>{['Name','Price','Stock','Category','Action'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
+          <thead><tr>{['Name', 'Price', 'Stock', 'Category', 'Action'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr></thead>
           <tbody>{products.map(p => (
             <tr key={p.id}>
               <td style={s.td}>{p.name}</td>
