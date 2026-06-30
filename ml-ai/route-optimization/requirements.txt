@@ -1,0 +1,4 @@
+numpy==1.26.4
+pandas==2.1.4
+matplotlib==3.8.2
+# Optional: ortools==9.8.3296 for enterprise-grade VRP solver
