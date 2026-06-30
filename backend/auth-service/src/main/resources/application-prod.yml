@@ -1,0 +1,15 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+logging:
+  level:
+    in.nearkart: INFO
+    org.springframework.security: WARN
+
+management:
+  endpoint:
+    health:
+      show-details: never
