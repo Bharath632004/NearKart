@@ -18,50 +18,41 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PaymentNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(PaymentNotFoundException ex) {
+        log.warn("Not found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error(ex.getMessage(), "PAYMENT_NOT_FOUND"));
-    }
-
-    @ExceptionHandler(SignatureVerificationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleSignature(SignatureVerificationException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getMessage(), "SIGNATURE_INVALID"));
-    }
-
-    @ExceptionHandler(InsufficientWalletBalanceException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInsufficientBalance(InsufficientWalletBalanceException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(ex.getMessage(), "INSUFFICIENT_WALLET_BALANCE"));
-    }
-
-    @ExceptionHandler(WalletNotFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleWalletNotFound(WalletNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error(ex.getMessage(), "WALLET_NOT_FOUND"));
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(PaymentException.class)
-    public ResponseEntity<ApiResponse<Void>> handlePaymentException(PaymentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body(ApiResponse.error(ex.getMessage(), "PAYMENT_GATEWAY_ERROR"));
+    public ResponseEntity<ApiResponse<Void>> handlePaymentEx(PaymentException ex) {
+        log.warn("Payment error: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(SignatureVerificationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleSigEx(SignatureVerificationException ex) {
+        log.warn("Signature error: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidation(
             MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(e ->
-                errors.put(((FieldError) e).getField(), e.getDefaultMessage()));
+        ex.getBindingResult().getAllErrors().forEach(e -> {
+            String field = ((FieldError) e).getField();
+            errors.put(field, e.getDefaultMessage());
+        });
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.<Map<String, String>>builder()
-                        .success(false).message("Validation failed")
-                        .data(errors).errorCode("VALIDATION_ERROR").build());
+                .body(ApiResponse.error("Validation failed: " + errors));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
-        log.error("Unexpected error: ", ex);
+        log.error("Unexpected error: {}", ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("An unexpected error occurred", "INTERNAL_SERVER_ERROR"));
+                .body(ApiResponse.error("Internal server error"));
     }
 }
