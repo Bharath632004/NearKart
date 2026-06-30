@@ -6,8 +6,10 @@ import '../../screens/customer/home_screen.dart';
 import '../../screens/customer/shop_detail_screen.dart';
 import '../../screens/customer/cart_screen.dart';
 import '../../screens/customer/order_tracking_screen.dart';
+import '../../screens/customer/order_history_screen.dart';
 import '../../screens/customer/wallet_screen.dart';
 import '../../screens/customer/reviews_screen.dart';
+import '../../screens/customer/profile_screen.dart';
 import '../../screens/delivery/delivery_home_screen.dart';
 import '../../screens/delivery/active_order_screen.dart';
 import '../../screens/common/live_tracking_screen.dart';
@@ -20,8 +22,10 @@ class AppRoutes {
   static const String shopDetail = '/shop-detail';
   static const String cart = '/cart';
   static const String orderTracking = '/order-tracking';
+  static const String orderHistory = '/order-history';
   static const String wallet = '/wallet';
   static const String reviews = '/reviews';
+  static const String profile = '/profile';
   static const String deliveryHome = '/delivery-home';
   static const String activeOrder = '/active-order';
   static const String liveTracking = '/live-tracking';
@@ -51,6 +55,8 @@ class AppRoutes {
         return MaterialPageRoute(
             builder: (_) =>
                 OrderTrackingScreen(orderId: args?['orderId'] ?? ''));
+      case orderHistory:
+        return MaterialPageRoute(builder: (_) => const OrderHistoryScreen());
       case wallet:
         return MaterialPageRoute(builder: (_) => const WalletScreen());
       case reviews:
@@ -61,6 +67,8 @@ class AppRoutes {
                   shopName: args?['shopName'] ?? '',
                   completedOrderId: args?['orderId'],
                 ));
+      case profile:
+        return MaterialPageRoute(builder: (_) => const ProfileScreen());
       case deliveryHome:
         return MaterialPageRoute(builder: (_) => const DeliveryHomeScreen());
       case activeOrder:
@@ -79,7 +87,7 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (_) => Scaffold(
             body: Center(
-                child: Text('No route defined for ${settings.name}')),
+                child: Text('No route defined for \${settings.name}')),
           ),
         );
     }
