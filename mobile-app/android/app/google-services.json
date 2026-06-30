@@ -1,12 +1,4 @@
 {
-  "_comment": "REPLACE THIS FILE with the real google-services.json downloaded from Firebase Console",
-  "_steps": [
-    "1. Go to https://console.firebase.google.com",
-    "2. Create project or select existing",
-    "3. Add Android app with package name: com.nearkart.app",
-    "4. Download google-services.json",
-    "5. Replace this file with the downloaded file"
-  ],
   "project_info": {
     "project_number": "YOUR_PROJECT_NUMBER",
     "project_id": "YOUR_PROJECT_ID",

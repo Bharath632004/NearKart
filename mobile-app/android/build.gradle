@@ -18,12 +18,12 @@ allprojects {
     }
 }
 
-rootProject.buildDir = '../build'
+// Fix: replaced deprecated rootProject.buildDir assignment (Gradle 8+ compatible)
 subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    layout.buildDirectory = rootProject.layout.buildDirectory.dir(project.name)
     project.evaluationDependsOn(':app')
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
 }

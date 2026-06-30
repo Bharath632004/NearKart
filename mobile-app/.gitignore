@@ -1,0 +1,42 @@
+# ─── Flutter/Dart ───
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# ─── Android secrets (NEVER commit real files) ───
+mobile-app/android/app/google-services.json
+android/app/google-services.json
+*.keystore
+*.jks
+key.properties
+
+# ─── iOS secrets (NEVER commit real files) ───
+ios/Runner/GoogleService-Info.plist
+mobile-app/ios/Runner/GoogleService-Info.plist
+
+# ─── iOS build artifacts ───
+**/Pods/
+**/Podfile.lock
+*.ipa
+*.dSYM.zip
+*.dSYM
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# ─── Android build artifacts ───
+*.apk
+*.aab
+**/local.properties
+
+# ─── IDE ───
+.idea/
+*.iml
+.vscode/
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
