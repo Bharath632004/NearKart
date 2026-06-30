@@ -18,7 +18,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false
 
   data:
     redis:
@@ -33,10 +33,13 @@ eureka:
   instance:
     prefer-ip-address: true
 
-jwt:
-  secret: ${JWT_SECRET:nearkart-super-secret-key-2026-must-be-256-bits-long-minimum}
-  access-token-expiry: 900000       # 15 minutes
-  refresh-token-expiry: 604800000   # 7 days
+nearkart:
+  jwt:
+    secret: ${JWT_SECRET:nearkart-super-secret-key-2026-must-be-256-bits-long-minimum}
+    access-token-expiry-ms: 900000       # 15 minutes
+    refresh-token-expiry-ms: 604800000   # 7 days
+  otp:
+    expiry-minutes: 5
 
 management:
   endpoints:
@@ -49,5 +52,5 @@ management:
 
 logging:
   level:
-    com.nearkart: DEBUG
+    in.nearkart: DEBUG
     org.springframework.security: INFO

@@ -8,19 +8,15 @@ import lombok.Data;
 @Data
 public class ResetPasswordRequest {
 
-    @NotBlank
-    @Pattern(regexp = "^[6-9]\\d{9}$")
+    @NotBlank(message = "Phone number is required")
+    @Pattern(regexp = "^[6-9]\\d{9}$", message = "Invalid Indian phone number")
     private String phone;
 
-    @NotBlank
-    @Pattern(regexp = "^\\d{6}$")
+    @NotBlank(message = "OTP is required")
+    @Size(min = 6, max = 6, message = "OTP must be exactly 6 digits")
     private String otp;
 
-    @NotBlank
-    @Size(min = 8)
-    @Pattern(
-        regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+$",
-        message = "Password must contain uppercase, lowercase, number and special character"
-    )
+    @NotBlank(message = "New password is required")
+    @Size(min = 8, message = "Password must be at least 8 characters")
     private String newPassword;
 }

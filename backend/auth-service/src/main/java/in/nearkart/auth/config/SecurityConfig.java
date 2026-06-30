@@ -35,7 +35,10 @@ public class SecurityConfig {
             "/api/v1/auth/otp/verify",
             "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password",
-            "/actuator/health"
+            "/api/v1/auth/token/refresh",
+            "/api/v1/auth/logout",
+            "/actuator/health",
+            "/actuator/info"
     };
 
     @Bean
