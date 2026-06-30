@@ -29,21 +29,22 @@ android {
     }
 
     signingConfigs {
-        // TODO: Replace with your actual keystore for production releases.
-        // See: https://docs.flutter.dev/deployment/android#signing-the-app
-        // Example:
-        // release {
-        //     storeFile file(System.getenv("KEYSTORE_PATH") ?: "keystore/release.jks")
-        //     storePassword System.getenv("KEYSTORE_PASSWORD")
-        //     keyAlias System.getenv("KEY_ALIAS")
-        //     keyPassword System.getenv("KEY_PASSWORD")
-        // }
+        release {
+            def keystorePath = System.getenv("KEYSTORE_PATH")
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
-            // NOTE: signingConfig signingConfigs.debug was removed.
-            // Configure a real signingConfig above before releasing to Play Store.
+            // Uses env-based keystore if KEYSTORE_PATH is set, else falls back to debug signing
+            // (debug signing is only safe for local testing — set env vars for Play Store uploads)
+            signingConfig System.getenv("KEYSTORE_PATH") ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
