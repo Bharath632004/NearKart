@@ -38,6 +38,14 @@ public class MerchantController {
         return ResponseEntity.ok(merchantService.getMerchantByUserId(userId));
     }
 
+    @Operation(summary = "Update current merchant profile")
+    @PatchMapping("/me")
+    public ResponseEntity<MerchantResponse> updateProfile(
+            @RequestHeader("X-User-Id") UUID userId,
+            @Valid @RequestBody MerchantUpdateRequest request) {
+        return ResponseEntity.ok(merchantService.updateMerchantProfile(userId, request));
+    }
+
     @Operation(summary = "Get merchant by ID (admin/internal)")
     @GetMapping("/{merchantId}")
     public ResponseEntity<MerchantResponse> getById(@PathVariable UUID merchantId) {

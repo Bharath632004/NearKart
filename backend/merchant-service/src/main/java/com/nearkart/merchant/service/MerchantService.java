@@ -50,6 +50,7 @@ public class MerchantService {
                 .panNumber(request.getPanNumber())
                 .status(MerchantStatus.PENDING_KYC)
                 .build();
+        log.info("Registering new merchant for userId: {}", userId);
         return toMerchantResponse(merchantRepository.save(merchant));
     }
 
@@ -60,6 +61,18 @@ public class MerchantService {
     public MerchantResponse getMerchantById(UUID merchantId) {
         return toMerchantResponse(merchantRepository.findById(merchantId)
                 .orElseThrow(() -> new ResourceNotFoundException("Merchant not found: " + merchantId)));
+    }
+
+    @Transactional
+    public MerchantResponse updateMerchantProfile(UUID userId, MerchantUpdateRequest request) {
+        Merchant merchant = findMerchantByUserId(userId);
+        if (request.getBusinessName() != null) merchant.setBusinessName(request.getBusinessName());
+        if (request.getBusinessType() != null) merchant.setBusinessType(request.getBusinessType());
+        if (request.getPhone() != null)        merchant.setPhone(request.getPhone());
+        if (request.getGstin() != null)        merchant.setGstin(request.getGstin());
+        if (request.getPanNumber() != null)    merchant.setPanNumber(request.getPanNumber());
+        log.info("Updated profile for merchant userId: {}", userId);
+        return toMerchantResponse(merchantRepository.save(merchant));
     }
 
     @Transactional
@@ -87,7 +100,6 @@ public class MerchantService {
                 .build();
         KycDocument saved = kycDocumentRepository.save(doc);
 
-        // Update merchant status
         if (merchant.getStatus() == MerchantStatus.PENDING_KYC) {
             merchant.setStatus(MerchantStatus.KYC_SUBMITTED);
             merchantRepository.save(merchant);
@@ -110,7 +122,6 @@ public class MerchantService {
         doc.setVerifiedAt(LocalDateTime.now());
         KycDocument saved = kycDocumentRepository.save(doc);
 
-        // If all docs verified, activate merchant
         Merchant merchant = doc.getMerchant();
         long totalDocs = kycDocumentRepository.countByMerchantIdAndVerified(merchant.getId(), true);
         if (totalDocs >= 2) {
@@ -149,6 +160,7 @@ public class MerchantService {
                 .openDays(request.getOpenDays())
                 .active(true)
                 .build();
+        log.info("Creating shop '{}' for merchant {}", request.getShopName(), merchant.getId());
         return toShopResponse(shopRepository.save(shop));
     }
 
@@ -213,6 +225,7 @@ public class MerchantService {
                 .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
         shop.setActive(!shop.isActive());
         shopRepository.save(shop);
+        log.info("Shop {} toggled to active={}", shopId, shop.isActive());
     }
 
     public List<ShopResponse> getNearbyShops(double latitude, double longitude, double radiusKm) {
@@ -221,7 +234,8 @@ public class MerchantService {
                 .stream().map(this::toShopResponse).collect(Collectors.toList());
     }
 
-    public List<ShopResponse> getNearbyShopsByCategory(double latitude, double longitude, double radiusKm, String category) {
+    public List<ShopResponse> getNearbyShopsByCategory(double latitude, double longitude,
+                                                        double radiusKm, String category) {
         double radiusMeters = radiusKm * 1000;
         return shopRepository.findNearbyShopsByCategory(latitude, longitude, radiusMeters, category)
                 .stream().map(this::toShopResponse).collect(Collectors.toList());
@@ -281,13 +295,25 @@ public class MerchantService {
         return toPromotionResponse(promotionRepository.save(promo));
     }
 
-    // ─── Settlement & Analytics ──────────────────────────────────────────────────
+    // ─── Settlements ─────────────────────────────────────────────────────────────
 
     public List<SettlementResponse> getMerchantSettlements(UUID userId) {
         Merchant merchant = findMerchantByUserId(userId);
         return settlementRepository.findByMerchantIdOrderByCreatedAtDesc(merchant.getId())
                 .stream().map(this::toSettlementResponse).collect(Collectors.toList());
     }
+
+    public SettlementResponse getSettlementById(UUID userId, UUID settlementId) {
+        Merchant merchant = findMerchantByUserId(userId);
+        Settlement settlement = settlementRepository.findById(settlementId)
+                .orElseThrow(() -> new ResourceNotFoundException("Settlement not found: " + settlementId));
+        if (!settlement.getMerchant().getId().equals(merchant.getId())) {
+            throw new BusinessException("Unauthorized to view this settlement");
+        }
+        return toSettlementResponse(settlement);
+    }
+
+    // ─── Analytics ───────────────────────────────────────────────────────────────
 
     public AnalyticsSummaryResponse getMerchantAnalytics(UUID userId) {
         Merchant merchant = findMerchantByUserId(userId);
@@ -307,7 +333,7 @@ public class MerchantService {
                 .pendingSettlement(pending)
                 .completedSettlement(settled)
                 .activePromotions(activePromos)
-                .totalOrders(0L) // would come from order-service in production
+                .totalOrders(0L)
                 .build();
     }
 

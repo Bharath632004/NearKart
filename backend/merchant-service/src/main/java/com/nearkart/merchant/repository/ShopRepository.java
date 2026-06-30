@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,6 +16,10 @@ public interface ShopRepository extends JpaRepository<Shop, UUID> {
     List<Shop> findByMerchantId(UUID merchantId);
 
     Optional<Shop> findByIdAndMerchantId(UUID id, UUID merchantId);
+
+    boolean existsByMerchantIdAndShopName(UUID merchantId, String shopName);
+
+    long countByActiveTrue();
 
     @Query(value = "SELECT s.* FROM shops s WHERE s.is_active = true " +
             "AND ST_DWithin(s.location::geography, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography, :radiusMeters) " +
@@ -32,6 +37,4 @@ public interface ShopRepository extends JpaRepository<Shop, UUID> {
                                           @Param("longitude") double longitude,
                                           @Param("radiusMeters") double radiusMeters,
                                           @Param("category") String category);
-
-    boolean existsByMerchantIdAndShopName(UUID merchantId, String shopName);
 }

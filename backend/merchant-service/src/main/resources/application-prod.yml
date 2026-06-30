@@ -1,0 +1,52 @@
+# ─── Production Profile ──────────────────────────────────────────────────────
+# All secrets MUST be injected via environment variables — never hardcode values.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+
+eureka:
+  client:
+    enabled: true
+    service-url:
+      defaultZone: http://${EUREKA_HOST}:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+aws:
+  s3:
+    bucket-name: ${AWS_S3_BUCKET}
+    region: ${AWS_REGION}
+    access-key: ${AWS_ACCESS_KEY:}
+    secret-key: ${AWS_SECRET_KEY:}
+
+jwt:
+  secret: ${JWT_SECRET}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.nearkart: INFO
+    org.springframework.security: WARN
+  file:
+    name: /var/log/nearkart/merchant-service.log
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 30
