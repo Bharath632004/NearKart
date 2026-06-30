@@ -18,6 +18,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
 
 eureka:
   client:
@@ -26,15 +27,28 @@ eureka:
   instance:
     prefer-ip-address: true
 
-jwt:
-  secret: ${JWT_SECRET:nearkart-super-secret-key-2026-must-be-256-bits-long-minimum}
+app:
+  jwt:
+    secret: ${JWT_SECRET:nearkart-super-secret-key-2026-must-be-256-bits-long-minimum}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
 
 logging:
   level:
     com.nearkart: DEBUG
+    org.springframework.security: INFO

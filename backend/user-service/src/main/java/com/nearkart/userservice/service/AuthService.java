@@ -1,6 +1,9 @@
 package com.nearkart.userservice.service;
 
 import com.nearkart.userservice.dto.*;
+import com.nearkart.userservice.exception.EmailAlreadyExistsException;
+import com.nearkart.userservice.exception.PhoneAlreadyExistsException;
+import com.nearkart.userservice.exception.UserNotFoundException;
 import com.nearkart.userservice.model.User;
 import com.nearkart.userservice.repository.UserRepository;
 import com.nearkart.userservice.security.JwtUtils;
@@ -21,7 +24,11 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+            throw new EmailAlreadyExistsException(request.getEmail());
+        }
+        if (request.getPhone() != null && !request.getPhone().isBlank()
+                && userRepository.existsByPhone(request.getPhone())) {
+            throw new PhoneAlreadyExistsException(request.getPhone());
         }
 
         User user = new User();
@@ -30,24 +37,28 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setPhone(request.getPhone());
 
-        if (request.getRole() != null) {
+        if (request.getRole() != null && !request.getRole().isBlank()) {
             user.setRole(User.Role.valueOf(request.getRole().toUpperCase()));
         }
 
         userRepository.save(user);
-        String token = jwtUtils.generateToken(user.getEmail());
+        String token = jwtUtils.generateToken(user.getEmail(), user.getRole().name());
         return new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getRole().name());
     }
 
     public AuthResponse login(LoginRequest request) {
-        Authentication auth = authenticationManager.authenticate(
+        authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException(request.getEmail()));
 
-        String token = jwtUtils.generateToken(user.getEmail());
+        if (!user.isActive()) {
+            throw new RuntimeException("Account is deactivated. Please contact support.");
+        }
+
+        String token = jwtUtils.generateToken(user.getEmail(), user.getRole().name());
         return new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getRole().name());
     }
 }
