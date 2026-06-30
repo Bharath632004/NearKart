@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../screens/splash_screen.dart';
+import '../../screens/auth/splash_screen.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/otp_screen.dart';
 import '../../screens/customer/home_screen.dart';
+import '../../screens/customer/shop_detail_screen.dart';
 import '../../screens/customer/cart_screen.dart';
-import '../../screens/customer/checkout_screen.dart';
 import '../../screens/customer/order_tracking_screen.dart';
+import '../../screens/customer/wallet_screen.dart';
+import '../../screens/customer/reviews_screen.dart';
 import '../../screens/delivery/delivery_home_screen.dart';
 import '../../screens/delivery/active_order_screen.dart';
 import '../../screens/common/live_tracking_screen.dart';
@@ -15,9 +17,11 @@ class AppRoutes {
   static const String login = '/login';
   static const String otp = '/otp';
   static const String home = '/home';
+  static const String shopDetail = '/shop-detail';
   static const String cart = '/cart';
-  static const String checkout = '/checkout';
   static const String orderTracking = '/order-tracking';
+  static const String wallet = '/wallet';
+  static const String reviews = '/reviews';
   static const String deliveryHome = '/delivery-home';
   static const String activeOrder = '/active-order';
   static const String liveTracking = '/live-tracking';
@@ -25,44 +29,59 @@ class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:
-        return _build(const SplashScreen());
+        return MaterialPageRoute(builder: (_) => const SplashScreen());
       case login:
-        return _build(const LoginScreen());
+        return MaterialPageRoute(builder: (_) => const LoginScreen());
       case otp:
-        return _build(const OtpScreen());
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+            builder: (_) => OtpScreen(phone: args?['phone'] ?? ''));
       case home:
-        return _build(const HomeScreen());
+        return MaterialPageRoute(builder: (_) => const HomeScreen());
+      case shopDetail:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+            builder: (_) => ShopDetailScreen(
+                shopId: args?['shopId'] ?? '',
+                shopName: args?['shopName'] ?? ''));
       case cart:
-        return _build(const CartScreen());
-      case checkout:
-        return _build(const CheckoutScreen());
+        return MaterialPageRoute(builder: (_) => const CartScreen());
       case orderTracking:
-        final orderId = settings.arguments as String? ?? 'ORDER';
-        return _build(OrderTrackingScreen(orderId: orderId));
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+            builder: (_) =>
+                OrderTrackingScreen(orderId: args?['orderId'] ?? ''));
+      case wallet:
+        return MaterialPageRoute(builder: (_) => const WalletScreen());
+      case reviews:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+            builder: (_) => ReviewsScreen(
+                  shopId: args?['shopId'] ?? '',
+                  shopName: args?['shopName'] ?? '',
+                  completedOrderId: args?['orderId'],
+                ));
       case deliveryHome:
-        return _build(const DeliveryHomeScreen());
+        return MaterialPageRoute(builder: (_) => const DeliveryHomeScreen());
       case activeOrder:
-        final order = settings.arguments as Map<String, dynamic>? ?? {};
-        return _build(ActiveOrderScreen(order: order));
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+            builder: (_) =>
+                ActiveOrderScreen(assignmentId: args?['assignmentId'] ?? ''));
       case liveTracking:
-        final args = settings.arguments as Map<String, dynamic>? ?? {};
-        return _build(LiveTrackingScreen(
-          title: args['title'] ?? 'Live Tracking',
-          orderId: args['orderId'] ?? 'ORDER',
-          sourceLat: (args['sourceLat'] ?? 17.3850).toDouble(),
-          sourceLng: (args['sourceLng'] ?? 78.4867).toDouble(),
-          destinationLat: (args['destinationLat'] ?? 17.3950).toDouble(),
-          destinationLng: (args['destinationLng'] ?? 78.4967).toDouble(),
-          courierName: args['courierName'] ?? 'Delivery Partner',
-          vehicleInfo: args['vehicleInfo'] ?? 'Bike',
-        ));
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+            builder: (_) => LiveTrackingScreen(
+                  orderId: args?['orderId'] ?? '',
+                  shopName: args?['shopName'] ?? 'Shop',
+                ));
       default:
-        return _build(const Scaffold(
-          body: Center(child: Text('Page not found')),
-        ));
+        return MaterialPageRoute(
+          builder: (_) => Scaffold(
+            body: Center(
+                child: Text('No route defined for ${settings.name}')),
+          ),
+        );
     }
   }
-
-  static MaterialPageRoute _build(Widget page) =>
-      MaterialPageRoute(builder: (_) => page);
 }
