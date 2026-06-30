@@ -12,10 +12,10 @@
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
 - [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Backend Setup](#backend-setup)
-  - [Mobile App Setup](#mobile-app-setup)
-  - [Firebase FCM Setup](#firebase-fcm-setup)
+    - [Prerequisites](#prerequisites)
+    - [Backend Setup](#backend-setup)
+    - [Mobile App Setup](#mobile-app-setup)
+    - [Firebase FCM Setup](#firebase-fcm-setup)
 - [API Reference](#api-reference)
 - [Mobile Screen Map](#mobile-screen-map)
 - [Push Notification Types](#push-notification-types)
@@ -143,7 +143,7 @@ NearKart/
 
 ### Prerequisites
 
-- **Flutter** ≥ 3.0.0 ([install](https://flutter.dev/docs/get-started/install))
+- **Flutter** ≥ 3.0.0 ([install](https://docs.flutter.dev/get-started/install))
 - **Java** 17+ and **Maven** 3.8+
 - **PostgreSQL** 15
 - **Firebase project** (for FCM)
@@ -207,11 +207,11 @@ flutter run
 # 2. Add Android app with package: com.nearkart.app
 # 3. Download google-services.json → place at mobile-app/android/app/
 
-# 4. android/build.gradle → add to dependencies:
-#    classpath 'com.google.gms:google-services:4.4.1'
+# 4. android/build.gradle (project-level) → add inside plugins {} block:
+#    id 'com.google.gms.google-services' version '4.4.1' apply false
 
-# 5. android/app/build.gradle → add at bottom:
-#    apply plugin: 'com.google.gms.google-services'
+# 5. android/app/build.gradle (app-level) → add inside plugins {} block:
+#    id 'com.google.gms.google-services'
 
 # 6. AndroidManifest.xml → add inside <application>:
 #    <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id"
@@ -226,6 +226,8 @@ flutter run
 
 Base URL: `http://localhost:8080`
 
+> All endpoints are versioned under `/api/v1/`. Examples below show paths relative to the base URL.
+
 ### 🔐 Auth — `/api/v1/auth`
 
 | Method | Endpoint | Description |
@@ -237,14 +239,14 @@ Base URL: `http://localhost:8080`
 | POST | `/refresh` | Refresh access token |
 | POST | `/logout` | Invalidate token |
 
-### 👤 Users — `/api/users`
+### 👤 Users — `/api/v1/users`
 
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/{userId}` | Get user profile |
 | PUT | `/{userId}` | Update profile |
 
-### 🏪 Shops — `/api/shops`
+### 🏪 Shops — `/api/v1/shops`
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -253,7 +255,7 @@ Base URL: `http://localhost:8080`
 | POST | `/` | Create shop (owner) |
 | PUT | `/{shopId}` | Update shop |
 
-### 📦 Products — `/api/products`
+### 📦 Products — `/api/v1/products`
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -272,7 +274,7 @@ Base URL: `http://localhost:8080`
 | DELETE | `/{userId}/remove/{productId}` | Remove item |
 | DELETE | `/{userId}/clear` | Clear cart |
 
-### 📋 Orders — `/api/orders`
+### 📋 Orders — `/api/v1/orders`
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -400,7 +402,8 @@ TWILIO_PHONE_NUMBER=+1xxxxxxxxxx
 
 ```dart
 class AppConstants {
-  static const String baseUrl = 'http://10.0.2.2:8080'; // Android emulator
+  // Change baseUrl before building for production!
+  static const String baseUrl = 'http://10.0.2.2:8080'; // Android emulator default
   static const String googleMapsApiKey = 'YOUR_GOOGLE_MAPS_KEY';
   static const String razorpayKeyId = 'rzp_test_xxxx';
 }
@@ -410,7 +413,7 @@ class AppConstants {
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+> TODO: Add [CONTRIBUTING.md](CONTRIBUTING.md) with branch naming, code style, and PR checklist.
 
 1. Fork the repo
 2. Create a feature branch: `git checkout -b feat/your-feature`
@@ -421,7 +424,9 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+> TODO: Add [LICENSE](LICENSE) file (MIT recommended).
+
+This project is licensed under the MIT License.
 
 ---
 
