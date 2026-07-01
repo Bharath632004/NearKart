@@ -18,6 +18,7 @@ import org.json.JSONObject;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -63,9 +64,10 @@ public class RefundServiceImpl implements RefundService {
 
             Refund refund = Refund.builder()
                     .paymentId(paymentId)
+                    .orderId(payment.getOrderId())
                     .amount(request.getAmount())
                     .reason(request.getReason())
-                    .method(RefundMethod.ORIGINAL_SOURCE)
+                    .refundMethod(RefundMethod.ORIGINAL_SOURCE)
                     .status(RefundStatus.INITIATED)
                     .razorpayRefundId(rzpRefundId)
                     .initiatedAt(LocalDateTime.now())
@@ -118,16 +120,24 @@ public class RefundServiceImpl implements RefundService {
         return toResponse(refundRepository.save(refund));
     }
 
+    @Override
+    public void initiateAutoRefund(UUID paymentId, BigDecimal amount, String reason) {
+        RefundRequest request = new RefundRequest();
+        request.setAmount(amount);
+        request.setReason(reason);
+        initiateRefund(paymentId, request);
+    }
+
     private RefundResponse toResponse(Refund r) {
         return RefundResponse.builder()
                 .id(r.getId())
-                .paymentId(r.getPaymentId())
+                .orderId(r.getOrderId())
                 .amount(r.getAmount())
                 .reason(r.getReason())
                 .status(r.getStatus())
+                .refundMethod(r.getRefundMethod())
                 .razorpayRefundId(r.getRazorpayRefundId())
-                .initiatedAt(r.getInitiatedAt())
-                .processedAt(r.getProcessedAt())
+                .createdAt(r.getCreatedAt())
                 .build();
     }
 }

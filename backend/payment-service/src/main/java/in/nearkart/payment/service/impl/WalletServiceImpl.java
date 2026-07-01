@@ -10,11 +10,12 @@ import in.nearkart.payment.repository.WalletTransactionRepository;
 import in.nearkart.payment.service.WalletService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -57,15 +58,17 @@ public class WalletServiceImpl implements WalletService {
                         .currency("INR")
                         .build()));
 
-        wallet.setBalance(wallet.getBalance().add(request.getAmount()));
+        BigDecimal before = wallet.getBalance();
+        wallet.setBalance(before.add(request.getAmount()));
         Wallet saved = walletRepository.save(wallet);
 
         WalletTransaction tx = WalletTransaction.builder()
                 .walletId(saved.getId())
                 .amount(request.getAmount())
                 .type(WalletTxType.CREDIT)
-                .description("Wallet top-up via " + request.getSource())
-                .createdAt(LocalDateTime.now())
+                .balanceBefore(before)
+                .balanceAfter(saved.getBalance())
+                .description("Wallet top-up via " + (request.getSource() != null ? request.getSource() : request.getRazorpayPaymentId()))
                 .build();
         walletTransactionRepository.save(tx);
 
@@ -83,15 +86,17 @@ public class WalletServiceImpl implements WalletService {
             throw new PaymentException("Insufficient wallet balance. Available: " + wallet.getBalance());
         }
 
-        wallet.setBalance(wallet.getBalance().subtract(amount));
+        BigDecimal before = wallet.getBalance();
+        wallet.setBalance(before.subtract(amount));
         Wallet saved = walletRepository.save(wallet);
 
         WalletTransaction tx = WalletTransaction.builder()
                 .walletId(saved.getId())
                 .amount(amount)
                 .type(WalletTxType.DEBIT)
+                .balanceBefore(before)
+                .balanceAfter(saved.getBalance())
                 .description(description)
-                .createdAt(LocalDateTime.now())
                 .build();
         walletTransactionRepository.save(tx);
 
@@ -106,26 +111,37 @@ public class WalletServiceImpl implements WalletService {
                 .orElseGet(() -> walletRepository.save(Wallet.builder()
                         .customerId(customerId).balance(BigDecimal.ZERO).currency("INR").build()));
 
-        wallet.setBalance(wallet.getBalance().add(amount));
+        BigDecimal before = wallet.getBalance();
+        wallet.setBalance(before.add(amount));
         Wallet saved = walletRepository.save(wallet);
 
         WalletTransaction tx = WalletTransaction.builder()
                 .walletId(saved.getId())
                 .amount(amount)
                 .type(WalletTxType.CREDIT)
+                .balanceBefore(before)
+                .balanceAfter(saved.getBalance())
                 .description(description)
-                .createdAt(LocalDateTime.now())
                 .build();
         walletTransactionRepository.save(tx);
         return toResponse(saved);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WalletTransaction> getTransactionHistory(UUID customerId, PageRequest pageRequest) {
+        Wallet wallet = walletRepository.findByCustomerId(customerId)
+                .orElseThrow(() -> new PaymentNotFoundException("Wallet not found for customer: " + customerId));
+        return walletTransactionRepository.findByWalletIdOrderByCreatedAtDesc(wallet.getId(), pageRequest);
+    }
+
     private WalletResponse toResponse(Wallet w) {
         return WalletResponse.builder()
                 .id(w.getId())
-                .customerId(w.getCustomerId())
+                .userId(w.getCustomerId())
                 .balance(w.getBalance())
-                .currency(w.getCurrency())
+                .isActive(w.getIsActive())
+                .updatedAt(w.getUpdatedAt())
                 .build();
     }
 }

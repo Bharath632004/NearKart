@@ -17,12 +17,18 @@ public class Wallet {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    // renamed from userId → customerId to match WalletServiceImpl
     @Column(nullable = false, unique = true)
-    private UUID userId;
+    private UUID customerId;
 
     @Column(nullable = false, precision = 10, scale = 2)
     @Builder.Default
     private BigDecimal balance = BigDecimal.ZERO;
+
+    // currency field used by WalletServiceImpl
+    @Column(nullable = false, length = 10)
+    @Builder.Default
+    private String currency = "INR";
 
     @Column(nullable = false)
     @Builder.Default

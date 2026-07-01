@@ -24,4 +24,9 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> error(String message, String errorCode) {
         return ApiResponse.<T>builder().success(false).message(message).errorCode(errorCode).build();
     }
+
+    // Single-arg overload used by GlobalExceptionHandler
+    public static <T> ApiResponse<T> error(String message) {
+        return error(message, "INTERNAL_ERROR");
+    }
 }

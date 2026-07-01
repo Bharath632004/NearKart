@@ -17,28 +17,30 @@ public class WalletTransaction {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "wallet_id", nullable = false)
-    private Wallet wallet;
+    // Direct walletId column (used by WalletServiceImpl builder)
+    @Column(name = "wallet_id", nullable = false)
+    private UUID walletId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private WalletTxType type;   // CREDIT / DEBIT
+    private WalletTxType type;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal balanceBefore;
+    @Builder.Default
+    private BigDecimal balanceBefore = BigDecimal.ZERO;
 
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal balanceAfter;
+    @Builder.Default
+    private BigDecimal balanceAfter = BigDecimal.ZERO;
 
     @Column(length = 300)
     private String description;
 
     @Column
-    private UUID referenceId;   // orderId / refundId
+    private UUID referenceId;
 
     @CreationTimestamp
     @Column(updatable = false)

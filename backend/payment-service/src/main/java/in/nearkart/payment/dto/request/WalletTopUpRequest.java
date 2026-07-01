@@ -10,8 +10,11 @@ import java.math.BigDecimal;
 public class WalletTopUpRequest {
 
     @NotNull
-    @DecimalMin(value = "10.00", message = "Minimum top-up is ₹10")
+    @DecimalMin(value = "10.00", message = "Minimum top-up is \u20b910")
     private BigDecimal amount;
 
-    private String razorpayPaymentId;   // After Razorpay top-up flow
+    private String razorpayPaymentId;
+
+    // source field used by WalletServiceImpl (e.g. "RAZORPAY", "UPI")
+    private String source;
 }

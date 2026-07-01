@@ -17,9 +17,9 @@ public class Refund {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_id", nullable = false)
-    private Payment payment;
+    // Direct paymentId column (used by RefundServiceImpl builder)
+    @Column(name = "payment_id", nullable = false)
+    private UUID paymentId;
 
     @Column(nullable = false)
     private UUID orderId;
@@ -28,7 +28,7 @@ public class Refund {
     private BigDecimal amount;
 
     @Column(unique = true)
-    private String razorpayRefundId;    // rfnd_XXXXXXXXX
+    private String razorpayRefundId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -40,6 +40,10 @@ public class Refund {
 
     @Column(columnDefinition = "TEXT")
     private String reason;
+
+    // Explicit initiatedAt field used by RefundServiceImpl
+    @Column(updatable = false)
+    private LocalDateTime initiatedAt;
 
     @Column
     private LocalDateTime processedAt;
