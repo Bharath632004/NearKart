@@ -3,6 +3,7 @@ package com.nearkart.user.service;
 import com.nearkart.user.dto.*;
 import com.nearkart.user.entity.Address;
 import com.nearkart.user.entity.UserProfile;
+import com.nearkart.user.kafka.UserEventProducer;
 import com.nearkart.user.repository.AddressRepository;
 import com.nearkart.user.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class UserProfileService {
 
     private final UserProfileRepository profileRepo;
     private final AddressRepository addressRepo;
+    private final UserEventProducer userEventProducer;
 
     public UserProfileResponse getProfile(UUID userId) {
         UserProfile profile = findOrThrow(userId);
@@ -41,6 +43,7 @@ public class UserProfileService {
                 .build();
         profileRepo.save(profile);
         log.info("Created profile for user: {}", userId);
+        userEventProducer.publishUserRegistered(userId.toString(), email, fullName, phone);
         return toResponse(profile);
     }
 
@@ -83,10 +86,8 @@ public class UserProfileService {
 
     @Transactional
     public void deleteAddress(UUID userId, UUID addressId) {
-        // Returns 404 if address does not exist
         Address address = addressRepo.findById(addressId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found"));
-        // Returns 403 if address belongs to a different user
         if (!address.getUserProfile().getUserId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: address belongs to another user");
         }
@@ -94,7 +95,6 @@ public class UserProfileService {
     }
 
     private UserProfile findOrThrow(UUID userId) {
-        // Returns 404 instead of 500 when profile is missing
         return profileRepo.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User profile not found"));
     }

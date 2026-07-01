@@ -4,6 +4,7 @@ import com.nearkart.merchant.dto.*;
 import com.nearkart.merchant.entity.*;
 import com.nearkart.merchant.entity.Settlement.SettlementStatus;
 import com.nearkart.merchant.exception.ResourceNotFoundException;
+import com.nearkart.merchant.kafka.MerchantEventProducer;
 import com.nearkart.merchant.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class AdminService {
     private final SettlementRepository settlementRepository;
     private final ShopRepository shopRepository;
     private final PromotionRepository promotionRepository;
+    private final MerchantEventProducer merchantEventProducer;
 
     public List<MerchantResponse> getAllMerchants(MerchantStatus status) {
         List<Merchant> merchants = (status != null)
@@ -46,7 +48,15 @@ public class AdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Merchant not found: " + merchantId));
         merchant.setStatus(status);
         log.info("Admin updated merchant {} status to {}", merchantId, status);
-        return toMerchantResponse(merchantRepository.save(merchant));
+        Merchant saved = merchantRepository.save(merchant);
+        if (status == MerchantStatus.ACTIVE) {
+            merchantEventProducer.publishMerchantApproved(
+                    saved.getId().getMostSignificantBits(), saved.getBusinessName(), saved.getEmail());
+        } else if (status == MerchantStatus.SUSPENDED) {
+            merchantEventProducer.publishMerchantSuspended(
+                    saved.getId().getMostSignificantBits(), saved.getBusinessName(), saved.getEmail(), "Admin action");
+        }
+        return toMerchantResponse(saved);
     }
 
     public List<KycDocumentResponse> getPendingKycDocuments() {
@@ -70,6 +80,8 @@ public class AdminService {
         if (approved && verifiedCount >= 2) {
             merchant.setStatus(MerchantStatus.ACTIVE);
             merchantRepository.save(merchant);
+            merchantEventProducer.publishMerchantApproved(
+                    merchant.getId().getMostSignificantBits(), merchant.getBusinessName(), merchant.getEmail());
             log.info("Merchant {} activated after KYC verification", merchant.getId());
         } else if (!approved) {
             merchant.setStatus(MerchantStatus.KYC_REJECTED);
@@ -96,9 +108,9 @@ public class AdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Merchant not found: " + request.getMerchantId()));
 
         BigDecimal platformFee = request.getGrossAmount()
-                .multiply(BigDecimal.valueOf(0.05)); // 5% platform fee
+                .multiply(BigDecimal.valueOf(0.05));
         BigDecimal taxDeducted = platformFee
-                .multiply(BigDecimal.valueOf(0.18)); // 18% GST on fee
+                .multiply(BigDecimal.valueOf(0.18));
         BigDecimal netAmount = request.getGrossAmount().subtract(platformFee).subtract(taxDeducted);
 
         Settlement settlement = Settlement.builder()
@@ -151,8 +163,6 @@ public class AdminService {
                 .totalSettledAmount(totalSettled)
                 .build();
     }
-
-    // ─── Mappers ─────────────────────────────────────────────────────────────────
 
     private MerchantResponse toMerchantResponse(Merchant m) {
         return MerchantResponse.builder()

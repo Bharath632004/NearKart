@@ -17,6 +17,13 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
 
 eureka:
   client:
@@ -29,6 +36,11 @@ eureka:
 
 jwt:
   secret: ${JWT_SECRET:bXlTdXBlclNlY3JldEtleUZvck5lYXJLYXJ0QXBwbGljYXRpb24xMjM0NTY=}
+
+kafka:
+  topic:
+    inventory-low-stock: inventory-low-stock
+    inventory-out-of-stock: inventory-out-of-stock
 
 management:
   endpoints:

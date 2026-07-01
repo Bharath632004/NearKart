@@ -4,6 +4,7 @@ import com.nearkart.inventoryservice.dto.*;
 import com.nearkart.inventoryservice.exception.InsufficientStockException;
 import com.nearkart.inventoryservice.exception.InventoryNotFoundException;
 import com.nearkart.inventoryservice.exception.DuplicateInventoryException;
+import com.nearkart.inventoryservice.kafka.InventoryEventProducer;
 import com.nearkart.inventoryservice.model.*;
 import com.nearkart.inventoryservice.repository.InventoryItemRepository;
 import com.nearkart.inventoryservice.repository.StockTransactionRepository;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +26,7 @@ public class InventoryService {
 
     private final InventoryItemRepository inventoryItemRepository;
     private final StockTransactionRepository stockTransactionRepository;
+    private final InventoryEventProducer inventoryEventProducer;
 
     @Transactional
     public InventoryItemResponse createInventoryItem(InventoryItemRequest request) {
@@ -46,7 +49,6 @@ public class InventoryService {
         InventoryItem saved = inventoryItemRepository.save(item);
         log.info("Created inventory item id={} for product={} shop={}", saved.getId(), saved.getProductId(), saved.getShopId());
 
-        // Record initial stock transaction
         if (request.getQuantityAvailable() > 0) {
             recordTransaction(saved.getId(), TransactionType.STOCK_IN, request.getQuantityAvailable(), 0, request.getQuantityAvailable(), null, "Initial stock");
         }
@@ -104,11 +106,18 @@ public class InventoryService {
             case ADJUSTMENT -> item.setQuantityAvailable(request.getQuantity());
         }
 
-        // Auto-update status based on quantity
         if (item.getQuantityAvailable() == 0) {
             item.setStatus(InventoryStatus.OUT_OF_STOCK);
+            inventoryEventProducer.publishOutOfStockEvent(
+                    UUID.fromString(item.getProductId().toString()), item.getProductName());
         } else if (item.getStatus() == InventoryStatus.OUT_OF_STOCK) {
             item.setStatus(InventoryStatus.ACTIVE);
+        } else if (item.getQuantityAvailable() <= item.getLowStockThreshold()) {
+            inventoryEventProducer.publishLowStockAlert(
+                    UUID.fromString(item.getProductId().toString()),
+                    item.getProductName(),
+                    item.getQuantityAvailable(),
+                    item.getLowStockThreshold());
         }
 
         InventoryItem updated = inventoryItemRepository.save(item);
@@ -173,8 +182,6 @@ public class InventoryService {
         return stockTransactionRepository.findByInventoryItemIdOrderByCreatedAtDesc(inventoryItemId)
                 .stream().map(this::mapTransactionToResponse).collect(Collectors.toList());
     }
-
-    // ---- Private helpers ----
 
     private InventoryItem findItemById(Long id) {
         return inventoryItemRepository.findById(id)

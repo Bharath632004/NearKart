@@ -6,8 +6,8 @@ spring:
     name: admin-service
   datasource:
     url: jdbc:postgresql://localhost:5432/nearkart_admin
-    username: postgres
-    password: yourpassword
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:yourpassword}
   jpa:
     hibernate:
       ddl-auto: update
@@ -16,11 +16,6 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8080/realms/nearkart
 
 eureka:
   client:
@@ -28,6 +23,9 @@ eureka:
       defaultZone: http://localhost:8761/eureka
   instance:
     prefer-ip-address: true
+
+jwt:
+  secret: ${JWT_SECRET:bXlTdXBlclNlY3JldEtleUZvck5lYXJLYXJ0QXBwbGljYXRpb24xMjM0NTY=}
 
 logging:
   level:

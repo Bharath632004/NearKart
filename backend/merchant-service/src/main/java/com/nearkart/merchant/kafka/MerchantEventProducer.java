@@ -22,28 +22,28 @@ public class MerchantEventProducer {
     @Value("${kafka.topic.merchant-suspended:merchant-suspended}")
     private String merchantSuspendedTopic;
 
-    public void publishMerchantApproved(Long merchantId, String merchantName, String email) {
+    public void publishMerchantApproved(long merchantIdBits, String merchantName, String email) {
         Map<String, Object> event = Map.of(
                 "eventType", "MERCHANT_APPROVED",
-                "merchantId", merchantId,
+                "merchantId", merchantIdBits,
                 "merchantName", merchantName,
                 "email", email,
                 "timestamp", LocalDateTime.now().toString()
         );
-        kafkaTemplate.send(merchantApprovedTopic, String.valueOf(merchantId), event);
-        log.info("Published MERCHANT_APPROVED event for merchantId {}", merchantId);
+        kafkaTemplate.send(merchantApprovedTopic, String.valueOf(merchantIdBits), event);
+        log.info("Published MERCHANT_APPROVED event for merchantId {}", merchantIdBits);
     }
 
-    public void publishMerchantSuspended(Long merchantId, String merchantName, String email, String reason) {
+    public void publishMerchantSuspended(long merchantIdBits, String merchantName, String email, String reason) {
         Map<String, Object> event = Map.of(
                 "eventType", "MERCHANT_SUSPENDED",
-                "merchantId", merchantId,
+                "merchantId", merchantIdBits,
                 "merchantName", merchantName,
                 "email", email,
                 "reason", reason,
                 "timestamp", LocalDateTime.now().toString()
         );
-        kafkaTemplate.send(merchantSuspendedTopic, String.valueOf(merchantId), event);
-        log.info("Published MERCHANT_SUSPENDED event for merchantId {}", merchantId);
+        kafkaTemplate.send(merchantSuspendedTopic, String.valueOf(merchantIdBits), event);
+        log.info("Published MERCHANT_SUSPENDED event for merchantId {}", merchantIdBits);
     }
 }
