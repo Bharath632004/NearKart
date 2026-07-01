@@ -17,6 +17,8 @@ axiosInstance.interceptors.response.use(
     if (err.response?.status === 401) {
       localStorage.removeItem('nearkart_token');
       localStorage.removeItem('nearkart_role');
+      // fix: dispatch custom event so App.jsx can sync Redux state via logout() action
+      window.dispatchEvent(new Event('nearkart:logout'));
       window.location.href = '/login';
     }
     return Promise.reject(err);

@@ -48,9 +48,17 @@ const cartSlice = createSlice({
       .addCase(addToCart.pending, setPending)
       .addCase(addToCart.fulfilled, (s, a) => { s.loading = false; s.items = a.payload; })
       .addCase(addToCart.rejected, setError)
-      .addCase(updateCartItem.fulfilled, (s, a) => { s.items = a.payload; })
-      .addCase(removeFromCart.fulfilled, (s, a) => { s.items = s.items.filter(i => i.id !== a.payload); })
-      .addCase(clearCart.fulfilled, (s) => { s.items = []; })
+      // fix: added missing pending/rejected handlers for updateCartItem
+      .addCase(updateCartItem.pending, setPending)
+      .addCase(updateCartItem.fulfilled, (s, a) => { s.loading = false; s.items = a.payload; })
+      .addCase(updateCartItem.rejected, setError)
+      .addCase(removeFromCart.pending, setPending)
+      .addCase(removeFromCart.fulfilled, (s, a) => { s.loading = false; s.items = s.items.filter(i => i.id !== a.payload); })
+      .addCase(removeFromCart.rejected, setError)
+      // fix: added missing pending/rejected handlers for clearCart
+      .addCase(clearCart.pending, setPending)
+      .addCase(clearCart.fulfilled, (s) => { s.loading = false; s.items = []; })
+      .addCase(clearCart.rejected, setError)
       .addCase(checkout.pending, setPending)
       .addCase(checkout.fulfilled, (s) => { s.loading = false; s.items = []; s.checkoutSuccess = true; })
       .addCase(checkout.rejected, setError);

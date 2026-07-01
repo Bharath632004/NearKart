@@ -25,8 +25,14 @@ export default function ManageProducts() {
   const handleSubmit = async (e) => {
     e.preventDefault(); setSaving(true); setError('');
     try {
-      if (editing) await updateProductApi(editing, form);
-      else await createProductApi(form);
+      // fix: coerce price to float and stock to int before sending to backend
+      const payload = {
+        ...form,
+        price: parseFloat(form.price),
+        stock: parseInt(form.stock, 10),
+      };
+      if (editing) await updateProductApi(editing, payload);
+      else await createProductApi(payload);
       setShowForm(false); setForm(empty); setEditing(null); load();
     } catch { setError('Failed to save product'); }
     finally { setSaving(false); }
@@ -52,10 +58,13 @@ export default function ManageProducts() {
           <div style={styles.formCard}>
             <h3 style={{ marginBottom: 16 }}>{editing ? 'Edit Product' : 'Add New Product'}</h3>
             <form onSubmit={handleSubmit} style={styles.formGrid}>
-              {[['name','Product Name'],['category','Category'],['price','Price (₹)'],['stock','Stock Qty'],['description','Description']].map(([n,l]) => (
+              {[['name','text','Product Name'],['category','text','Category'],['price','number','Price (₹)'],['stock','number','Stock Qty'],['description','text','Description']].map(([n,t,l]) => (
                 <div key={n} style={{ gridColumn: n === 'description' ? 'span 2' : 'auto' }}>
                   <label style={styles.label}>{l}</label>
-                  <input name={n} value={form[n]} onChange={handleChange} style={styles.input} required />
+                  {/* fix: use type=number for price and stock to prevent string submission */}
+                  <input name={n} type={t} min={t === 'number' ? '0' : undefined}
+                    step={n === 'price' ? '0.01' : undefined}
+                    value={form[n]} onChange={handleChange} style={styles.input} required />
                 </div>
               ))}
               <div style={{ display: 'flex', gap: 10, gridColumn: 'span 2' }}>

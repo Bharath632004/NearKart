@@ -6,6 +6,9 @@ import Loader from '../../components/Loader';
 import ErrorMsg from '../../components/ErrorMsg';
 import { fetchCart, updateCartItem, removeFromCart, checkout, resetCheckout } from '../../redux/cartSlice';
 
+// fix: declare delivery fee as a constant so it's consistent between UI and backend payload
+const DELIVERY_FEE = 40;
+
 export default function Cart() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -22,6 +25,11 @@ export default function Cart() {
     }
   }, [checkoutSuccess, dispatch, navigate]);
 
+  // fix: close checkout modal automatically when cart becomes empty
+  useEffect(() => {
+    if (items.length === 0) setShowCheckout(false);
+  }, [items]);
+
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   const handleQty = (item, delta) => {
@@ -30,9 +38,10 @@ export default function Cart() {
     dispatch(updateCartItem({ id: item.id, data: { quantity: newQty } }));
   };
 
+  // fix: pass deliveryFee to backend so order total is accurate
   const handleCheckout = (e) => {
     e.preventDefault();
-    dispatch(checkout({ deliveryAddress: address }));
+    dispatch(checkout({ deliveryAddress: address, deliveryFee: DELIVERY_FEE }));
   };
 
   return (
@@ -65,9 +74,9 @@ export default function Cart() {
             <div style={styles.summary}>
               <h3 style={{ marginBottom: 16 }}>Order Summary</h3>
               <div style={styles.row}><span>Subtotal</span><span>₹{total}</span></div>
-              <div style={styles.row}><span>Delivery</span><span>₹40</span></div>
+              <div style={styles.row}><span>Delivery</span><span>₹{DELIVERY_FEE}</span></div>
               <div style={{ ...styles.row, fontWeight: 700, fontSize: 16, borderTop: '1px solid #eee', paddingTop: 12, marginTop: 8 }}>
-                <span>Total</span><span style={{ color: '#e94560' }}>₹{total + 40}</span>
+                <span>Total</span><span style={{ color: '#e94560' }}>₹{total + DELIVERY_FEE}</span>
               </div>
               <button style={styles.coBtn} onClick={() => setShowCheckout(true)}>Proceed to Checkout</button>
             </div>

@@ -50,7 +50,8 @@ export default function Navbar() {
         {(navLinks[role] || []).map((l) => (
           <Link key={l.to} to={l.to} style={styles.link}>{l.label}</Link>
         ))}
-        <button onClick={handleLogout} style={styles.btn}>Logout</button>
+        {/* fix: only show Logout when a role exists (user is logged in) */}
+        {role && <button onClick={handleLogout} style={styles.btn}>Logout</button>}
       </div>
     </nav>
   );

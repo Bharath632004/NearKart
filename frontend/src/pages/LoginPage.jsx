@@ -14,6 +14,11 @@ export default function LoginPage() {
     if (role) navigate(`/${role.toLowerCase()}`);
   }, [role, navigate]);
 
+  // fix: clear stale Redux error when leaving this page
+  useEffect(() => {
+    return () => { dispatch(clearError()); };
+  }, [dispatch]);
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = (e) => {

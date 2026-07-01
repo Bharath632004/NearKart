@@ -23,10 +23,15 @@ export default function ProductList() {
       .finally(() => setLoading(false));
   }, [shopId]);
 
+  // fix: only show success feedback if dispatch actually fulfilled; show error on failure
   const handleAdd = async (product) => {
-    await dispatch(addToCart({ productId: product.id, shopId, quantity: 1 }));
-    setAdded(a => ({ ...a, [product.id]: true }));
-    setTimeout(() => setAdded(a => ({ ...a, [product.id]: false })), 2000);
+    const res = await dispatch(addToCart({ productId: product.id, shopId, quantity: 1 }));
+    if (addToCart.fulfilled.match(res)) {
+      setAdded(a => ({ ...a, [product.id]: true }));
+      setTimeout(() => setAdded(a => ({ ...a, [product.id]: false })), 2000);
+    } else {
+      setError('Failed to add to cart. Please try again.');
+    }
   };
 
   const filtered = products.filter(p =>

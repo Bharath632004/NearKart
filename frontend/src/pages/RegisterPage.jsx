@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { registerUser, clearError } from '../redux/authSlice';
@@ -10,6 +10,11 @@ export default function RegisterPage() {
   const { loading, error } = useSelector((s) => s.auth);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'CUSTOMER', phone: '', address: '' });
   const [success, setSuccess] = useState(false);
+
+  // fix: clear stale Redux error when leaving this page
+  useEffect(() => {
+    return () => { dispatch(clearError()); };
+  }, [dispatch]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 

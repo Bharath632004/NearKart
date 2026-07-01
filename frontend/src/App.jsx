@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Provider } from 'react-redux';
+import { Provider, useDispatch } from 'react-redux';
 import { store } from './redux/store';
+import { logout } from './redux/authSlice';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 
@@ -32,7 +33,6 @@ import ManageMerchants from './pages/admin/ManageMerchants';
 import ManageDelivery from './pages/admin/ManageDelivery';
 import AdminReports from './pages/admin/AdminReports';
 
-// fix: Role-based redirect from root instead of always going to /login
 function RootRedirect() {
   const token = localStorage.getItem('nearkart_token');
   const role = localStorage.getItem('nearkart_role');
@@ -49,15 +49,26 @@ function PrivateRoute({ children, role }) {
   return children;
 }
 
+// fix: listen for 401 logout event from axiosInstance to sync Redux state
+function AuthSyncListener() {
+  const dispatch = useDispatch();
+  useEffect(() => {
+    const handler = () => dispatch(logout());
+    window.addEventListener('nearkart:logout', handler);
+    return () => window.removeEventListener('nearkart:logout', handler);
+  }, [dispatch]);
+  return null;
+}
+
 export default function App() {
   return (
     <Provider store={store}>
       <Router>
+        <AuthSyncListener />
         <Routes>
           {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          {/* fix: Smart role-based root redirect */}
           <Route path="/" element={<RootRedirect />} />
 
           {/* Customer Routes */}
@@ -87,7 +98,7 @@ export default function App() {
           <Route path="/admin/delivery" element={<PrivateRoute role="ADMIN"><ManageDelivery /></PrivateRoute>} />
           <Route path="/admin/reports" element={<PrivateRoute role="ADMIN"><AdminReports /></PrivateRoute>} />
 
-          {/* fix: Catch-all 404 redirect */}
+          {/* Catch-all 404 redirect */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>
