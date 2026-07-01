@@ -22,9 +22,10 @@ class Order {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) => Order(
-        id: json['id'],
-        shopId: json['shopId'],
-        userId: json['userId'],
+        // Use toString() for safety — backend may send int IDs
+        id: json['id']?.toString() ?? '',
+        shopId: json['shopId']?.toString() ?? '',
+        userId: json['userId']?.toString() ?? '',
         items: (json['items'] as List)
             .map((e) => OrderItem.fromJson(e))
             .toList(),
@@ -33,8 +34,8 @@ class Order {
           (e) => e.name == json['status'],
           orElse: () => OrderStatus.placed,
         ),
-        createdAt: DateTime.parse(json['createdAt']),
-        deliveryAddress: json['deliveryAddress'],
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        deliveryAddress: json['deliveryAddress'] as String? ?? '',
       );
 }
 
@@ -52,9 +53,9 @@ class OrderItem {
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
-        productId: json['productId'],
-        name: json['name'],
-        quantity: json['quantity'],
+        productId: json['productId']?.toString() ?? '',
+        name: json['name'] as String? ?? '',
+        quantity: json['quantity'] as int? ?? 1,
         price: (json['price'] as num).toDouble(),
       );
 }

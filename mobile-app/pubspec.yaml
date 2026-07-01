@@ -40,6 +40,9 @@ dependencies:
   # Secure storage for JWT
   flutter_secure_storage: ^9.0.0
 
+  # Shared preferences (used by ApiService and AuthProvider)
+  shared_preferences: ^2.2.3
+
   # Icons
   cupertino_icons: ^1.0.6
 

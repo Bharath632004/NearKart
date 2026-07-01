@@ -32,7 +32,7 @@ class ApiService {
     final token = await getToken();
     return {
       'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer \$token',
+      if (token != null) 'Authorization': 'Bearer $token',
     };
   }
 
@@ -43,7 +43,7 @@ class ApiService {
     Map<String, dynamic>? body,
     Map<String, String>? queryParams,
   }) async {
-    final uri = Uri.parse('\${AppConstants.baseUrl}\$path')
+    final uri = Uri.parse('${AppConstants.baseUrl}$path')
         .replace(queryParameters: queryParams);
     final headers = await _authHeaders();
 
@@ -111,16 +111,16 @@ class ApiService {
   // USERS  →  /api/users
   // ══════════════════════════════════════════════════════════════════
   static Future<Map<String, dynamic>> getProfile(String userId) =>
-      _request('GET', '/api/users/\$userId');
+      _request('GET', '/api/users/$userId');
 
   static Future<Map<String, dynamic>> updateProfile(
           String userId, Map<String, dynamic> data) =>
-      _request('PUT', '/api/users/\$userId', body: data);
+      _request('PUT', '/api/users/$userId', body: data);
 
   // ══════════════════════════════════════════════════════════════════
-  // SHOPS  →  /api/shops  &  /api/v1/shops
+  // SHOPS  →  /api/shops
   // ══════════════════════════════════════════════════════════════════
-  static Future<List<ShopModel>> getNearbyShops({
+  static Future<List<Shop>> getNearbyShops({
     required double lat,
     required double lng,
     double radiusKm = 5.0,
@@ -131,78 +131,78 @@ class ApiService {
       'radius': radiusKm.toString(),
     });
     final list = res['data'] as List? ?? res['content'] as List? ?? [];
-    return list.map((e) => ShopModel.fromJson(e)).toList();
+    return list.map((e) => Shop.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   static Future<Map<String, dynamic>> getShopById(String shopId) =>
-      _request('GET', '/api/shops/\$shopId');
+      _request('GET', '/api/shops/$shopId');
 
   // ══════════════════════════════════════════════════════════════════
   // PRODUCTS  →  /api/products
   // ══════════════════════════════════════════════════════════════════
-  static Future<List<ProductModel>> getProductsByShop(String shopId) async {
+  static Future<List<Product>> getProductsByShop(String shopId) async {
     final res = await _request('GET', '/api/products',
         queryParams: {'shopId': shopId});
     final list = res['data'] as List? ?? res['content'] as List? ?? [];
-    return list.map((e) => ProductModel.fromJson(e)).toList();
+    return list.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   static Future<Map<String, dynamic>> getProductById(String productId) =>
-      _request('GET', '/api/products/\$productId');
+      _request('GET', '/api/products/$productId');
 
   // ══════════════════════════════════════════════════════════════════
   // CART  →  /api/v1/cart
   // ══════════════════════════════════════════════════════════════════
   static Future<Map<String, dynamic>> getCart(String userId) =>
-      _request('GET', '/api/v1/cart/\$userId');
+      _request('GET', '/api/v1/cart/$userId');
 
   static Future<Map<String, dynamic>> addToCart({
     required String userId,
     required String productId,
     required int quantity,
   }) =>
-      _request('POST', '/api/v1/cart/\$userId/items',
+      _request('POST', '/api/v1/cart/$userId/items',
           body: {'productId': productId, 'quantity': quantity});
 
   static Future<Map<String, dynamic>> removeFromCart(
           String userId, String itemId) =>
-      _request('DELETE', '/api/v1/cart/\$userId/items/\$itemId');
+      _request('DELETE', '/api/v1/cart/$userId/items/$itemId');
 
   static Future<Map<String, dynamic>> clearCart(String userId) =>
-      _request('DELETE', '/api/v1/cart/\$userId');
+      _request('DELETE', '/api/v1/cart/$userId');
 
   // ══════════════════════════════════════════════════════════════════
-  // ORDERS  →  /api/orders  &  /api/v1/orders
+  // ORDERS  →  /api/orders
   // ══════════════════════════════════════════════════════════════════
   static Future<Map<String, dynamic>> placeOrder(
           Map<String, dynamic> orderData) =>
       _request('POST', '/api/orders', body: orderData);
 
-  static Future<List<OrderModel>> getMyOrders(String userId) async {
+  static Future<List<Order>> getMyOrders(String userId) async {
     final res = await _request('GET', '/api/orders',
         queryParams: {'userId': userId});
     final list = res['data'] as List? ?? res['content'] as List? ?? [];
-    return list.map((e) => OrderModel.fromJson(e)).toList();
+    return list.map((e) => Order.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   static Future<Map<String, dynamic>> getOrderById(String orderId) =>
-      _request('GET', '/api/orders/\$orderId');
+      _request('GET', '/api/orders/$orderId');
 
   static Future<Map<String, dynamic>> cancelOrder(String orderId) =>
-      _request('PATCH', '/api/orders/\$orderId/cancel');
+      _request('PATCH', '/api/orders/$orderId/cancel');
 
   // ══════════════════════════════════════════════════════════════════
   // DELIVERY / TRACKING  →  /api/v1/delivery
   // ══════════════════════════════════════════════════════════════════
   static Future<Map<String, dynamic>> getOrderTracking(String orderId) =>
-      _request('GET', '/api/v1/delivery/tracking/\$orderId');
+      _request('GET', '/api/v1/delivery/tracking/$orderId');
 
   static Future<void> updateDeliveryLocation({
     required String assignmentId,
     required double lat,
     required double lng,
   }) =>
-      _request('PATCH', '/api/v1/delivery/tracking/\$assignmentId/location',
+      _request('PATCH', '/api/v1/delivery/tracking/$assignmentId/location',
           body: {'latitude': lat, 'longitude': lng});
 
   static Future<List<dynamic>> getDeliveryAssignments(String partnerId) async {
@@ -216,7 +216,7 @@ class ApiService {
     required String status,
   }) =>
       _request('PATCH',
-          '/api/v1/delivery/assignments/\$assignmentId/status',
+          '/api/v1/delivery/assignments/$assignmentId/status',
           body: {'status': status});
 
   // ══════════════════════════════════════════════════════════════════
@@ -231,16 +231,16 @@ class ApiService {
       _request('POST', '/api/v1/payments/verify', body: verifyData);
 
   static Future<Map<String, dynamic>> getPaymentById(String paymentId) =>
-      _request('GET', '/api/v1/payments/\$paymentId');
+      _request('GET', '/api/v1/payments/$paymentId');
 
   // ══════════════════════════════════════════════════════════════════
   // WALLET  →  /api/v1/wallet
   // ══════════════════════════════════════════════════════════════════
   static Future<Map<String, dynamic>> getWallet(String userId) =>
-      _request('GET', '/api/v1/wallet/\$userId');
+      _request('GET', '/api/v1/wallet/$userId');
 
   static Future<List<dynamic>> getWalletTransactions(String userId) async {
-    final res = await _request('GET', '/api/v1/wallet/\$userId/transactions');
+    final res = await _request('GET', '/api/v1/wallet/$userId/transactions');
     return res['data'] as List? ?? res['content'] as List? ?? [];
   }
 
@@ -249,7 +249,7 @@ class ApiService {
     required double amount,
     required String paymentId,
   }) =>
-      _request('POST', '/api/v1/wallet/\$userId/add',
+      _request('POST', '/api/v1/wallet/$userId/add',
           body: {'amount': amount, 'paymentId': paymentId});
 
   static Future<Map<String, dynamic>> walletPayment({
@@ -257,14 +257,14 @@ class ApiService {
     required double amount,
     required String orderId,
   }) =>
-      _request('POST', '/api/v1/wallet/\$userId/pay',
+      _request('POST', '/api/v1/wallet/$userId/pay',
           body: {'amount': amount, 'orderId': orderId});
 
   // ══════════════════════════════════════════════════════════════════
-  // REVIEWS  →  /api/v1/shops/{shopId}/reviews (via merchant-service)
+  // REVIEWS  →  /api/v1/shops/{shopId}/reviews
   // ══════════════════════════════════════════════════════════════════
   static Future<List<dynamic>> getShopReviews(String shopId) async {
-    final res = await _request('GET', '/api/v1/shops/\$shopId/reviews');
+    final res = await _request('GET', '/api/v1/shops/$shopId/reviews');
     return res['data'] as List? ?? res['content'] as List? ?? [];
   }
 
@@ -274,7 +274,7 @@ class ApiService {
     required String comment,
     String? orderId,
   }) =>
-      _request('POST', '/api/v1/shops/\$shopId/reviews',
+      _request('POST', '/api/v1/shops/$shopId/reviews',
           body: {
             'rating': rating,
             'comment': comment,
@@ -282,7 +282,7 @@ class ApiService {
           });
 
   static Future<void> deleteReview(String shopId, String reviewId) =>
-      _request('DELETE', '/api/v1/shops/\$shopId/reviews/\$reviewId');
+      _request('DELETE', '/api/v1/shops/$shopId/reviews/$reviewId');
 
   // ══════════════════════════════════════════════════════════════════
   // NOTIFICATIONS  →  /api/v1/notifications
@@ -294,7 +294,7 @@ class ApiService {
   }
 
   static Future<void> markNotificationRead(String notificationId) =>
-      _request('PATCH', '/api/v1/notifications/\$notificationId/read');
+      _request('PATCH', '/api/v1/notifications/$notificationId/read');
 
   static Future<void> registerFcmToken(String userId, String fcmToken) =>
       _request('POST', '/api/v1/notifications/register-device',
@@ -307,5 +307,5 @@ class ApiException implements Exception {
   final int statusCode;
   ApiException(this.message, this.statusCode);
   @override
-  String toString() => 'ApiException(\$statusCode): \$message';
+  String toString() => 'ApiException($statusCode): $message';
 }

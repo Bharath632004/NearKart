@@ -33,7 +33,7 @@ class _NearKartAppState extends State<NearKartApp> {
       navigatorKey: widget.navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
+        // primarySwatch removed — deprecated in Material 3
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6C63FF),
         ),

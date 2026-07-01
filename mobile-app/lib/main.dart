@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 import 'services/notification_service.dart';
 import 'providers/auth_provider.dart';
+import 'providers/cart_provider.dart';
+import 'providers/order_provider.dart';
 import 'app.dart';
 
 /// Must be top-level for Firebase background isolate
 @pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(message) async {
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await NotificationService.showLocalNotification(message);
 }
 
@@ -20,14 +23,19 @@ Future<void> main() async {
   // Initialise Firebase
   await Firebase.initializeApp();
 
-  // Register background FCM handler before runApp
-  // (also set inside NotificationService.init but safe to call here too)
-  // FirebaseMessaging.onBackgroundMessage is idempotent
+  // Register background FCM handler BEFORE runApp (required for background isolate)
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Restore saved session before rendering anything
+  final authProvider = AuthProvider();
+  await authProvider.initAuth();
 
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider<AuthProvider>(value: authProvider),
+        ChangeNotifierProvider<CartProvider>(create: (_) => CartProvider()),
+        ChangeNotifierProvider<OrderProvider>(create: (_) => OrderProvider()),
       ],
       child: NearKartApp(navigatorKey: navigatorKey),
     ),

@@ -11,6 +11,8 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
 
   bool get isAuthenticated => _isAuthenticated;
+  // Alias used by SplashScreen and other widgets
+  bool get isLoggedIn => _isAuthenticated;
   String? get userId => _userId;
   String? get userPhone => _userPhone;
   String? get userName => _userName;

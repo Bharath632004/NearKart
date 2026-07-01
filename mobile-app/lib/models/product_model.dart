@@ -18,13 +18,14 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
-        id: json['id'],
-        name: json['name'],
+        // Use toString() for safety — backend may send int IDs
+        id: json['id']?.toString() ?? '',
+        name: json['name'] as String? ?? '',
         price: (json['price'] as num).toDouble(),
-        imageUrl: json['imageUrl'] ?? '',
-        shopId: json['shopId'],
-        category: json['category'] ?? '',
-        isAvailable: json['isAvailable'] ?? true,
+        imageUrl: json['imageUrl'] as String? ?? '',
+        shopId: json['shopId']?.toString() ?? '',
+        category: json['category'] as String? ?? '',
+        isAvailable: json['isAvailable'] as bool? ?? true,
       );
 
   Map<String, dynamic> toJson() => {
