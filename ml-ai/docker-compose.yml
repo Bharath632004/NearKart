@@ -1,0 +1,56 @@
+# =============================================================
+# NearKart ML/AI — Docker Compose
+# Spins up all 4 FastAPI microservices together.
+# Usage: docker-compose up --build
+# =============================================================
+
+version: '3.9'
+
+services:
+
+  demand-prediction:
+    build:
+      context: ./demand-prediction
+    command: uvicorn api:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./demand-prediction/models:/app/models
+      - ./demand-prediction/plots:/app/plots
+
+  fraud-detection:
+    build:
+      context: ./fraud-detection
+    command: uvicorn api:app --host 0.0.0.0 --port 8001
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./fraud-detection/models:/app/models
+
+  recommendation-engine:
+    build:
+      context: ./recommendation-engine
+    command: uvicorn api:app --host 0.0.0.0 --port 8002
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./recommendation-engine/models:/app/models
+
+  inventory-forecasting:
+    build:
+      context: ./inventory-forecasting
+    command: uvicorn api:app --host 0.0.0.0 --port 8003
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./inventory-forecasting/models:/app/models
+      - ./inventory-forecasting/plots:/app/plots
+
+  route-optimization:
+    build:
+      context: ./route-optimization
+    command: uvicorn api:app --host 0.0.0.0 --port 8004
+    ports:
+      - "8004:8004"
+    volumes:
+      - ./route-optimization/plots:/app/plots
