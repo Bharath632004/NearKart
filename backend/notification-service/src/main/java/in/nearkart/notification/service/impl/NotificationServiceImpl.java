@@ -39,7 +39,6 @@ public class NotificationServiceImpl implements NotificationService {
         NotificationTemplate tpl = NotificationTemplate.of(
                 req.getType(), req.getTemplateArgs());
 
-        // Persist notification record
         in.nearkart.notification.entity.Notification notification =
                 in.nearkart.notification.entity.Notification.builder()
                         .userId(req.getUserId())
@@ -105,18 +104,21 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void registerDeviceToken(UUID userId, DeviceTokenRequest request) {
-        // Soft-deactivate old entries for same token
         deviceTokenRepository.deactivateByToken(request.getToken());
 
+        // DeviceToken.platform is String; DeviceTokenRequest.platform is DevicePlatform enum
+        String platformStr = request.getPlatform() != null
+                ? request.getPlatform().name() : null;
+
         DeviceToken deviceToken = DeviceToken.builder()
-                .userId(userId.toString())   // DeviceToken.userId is String
+                .userId(userId.toString())
                 .fcmToken(request.getToken())
-                .platform(request.getPlatform())
+                .platform(platformStr)
                 .active(true)
                 .build();
 
         deviceTokenRepository.save(deviceToken);
-        log.info("Device token registered: userId={}, platform={}", userId, request.getPlatform());
+        log.info("Device token registered: userId={}, platform={}", userId, platformStr);
     }
 
     @Override
