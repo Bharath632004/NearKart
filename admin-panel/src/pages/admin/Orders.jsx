@@ -7,7 +7,13 @@ const mockOrders = [
   { _id: "o3", customer: "Anjali", merchant: "Ravi Kirana", amount: 540, status: "cancelled", date: "2025-06-29" },
 ];
 
-const statusColor = { delivered: "bg-green-100 text-green-700", pending: "bg-yellow-100 text-yellow-700", cancelled: "bg-red-100 text-red-700" };
+const statusColor = {
+  delivered: "bg-green-100 text-green-700",
+  pending: "bg-yellow-100 text-yellow-700",
+  cancelled: "bg-red-100 text-red-700",
+  processing: "bg-blue-100 text-blue-700",
+  shipped: "bg-purple-100 text-purple-700",
+};
 
 export default function Orders() {
   const [orders, setOrders] = useState(mockOrders);
@@ -35,7 +41,7 @@ export default function Orders() {
                 <td className="px-4 py-3 font-semibold">₹{o.amount}</td>
                 <td className="px-4 py-3">{o.date}</td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusColor[o.status]}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusColor[o.status] || "bg-gray-100 text-gray-700"}`}>
                     {o.status}
                   </span>
                 </td>

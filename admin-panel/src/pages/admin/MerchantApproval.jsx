@@ -42,14 +42,16 @@ export default function MerchantApproval() {
                     "bg-yellow-100 text-yellow-700"
                   }`}>{m.status}</span>
                 </td>
-                <td className="px-4 py-3 flex gap-2">
-                  {m.status === "pending" && (
-                    <>
-                      <button onClick={() => updateStatus(m._id, "approved")} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs">Approve</button>
-                      <button onClick={() => updateStatus(m._id, "rejected")} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs">Reject</button>
-                    </>
-                  )}
-                  {m.status !== "pending" && <span className="text-gray-400 text-xs">No action</span>}
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    {m.status === "pending" && (
+                      <>
+                        <button onClick={() => updateStatus(m._id, "approved")} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-xs">Approve</button>
+                        <button onClick={() => updateStatus(m._id, "rejected")} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs">Reject</button>
+                      </>
+                    )}
+                    {m.status !== "pending" && <span className="text-gray-400 text-xs">No action</span>}
+                  </div>
                 </td>
               </tr>
             ))}

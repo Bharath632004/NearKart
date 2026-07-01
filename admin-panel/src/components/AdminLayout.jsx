@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 
 const adminLinks = [
-  { to: "/admin", label: "Dashboard", icon: "🏠" },
+  { to: "/admin", label: "Dashboard", icon: "🏠", end: true },
   { to: "/admin/users", label: "Users", icon: "👥" },
   { to: "/admin/merchants", label: "Merchants", icon: "🏪" },
   { to: "/admin/delivery", label: "Delivery Partners", icon: "🚚" },

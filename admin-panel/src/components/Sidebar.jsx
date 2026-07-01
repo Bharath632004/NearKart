@@ -12,7 +12,7 @@ export default function Sidebar({ links, open, title }) {
           <NavLink
             key={link.to}
             to={link.to}
-            end
+            end={link.end || false}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 hover:bg-indigo-600 transition-colors ${
                 isActive ? "bg-indigo-900 font-semibold" : ""

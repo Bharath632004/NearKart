@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 
 const merchantLinks = [
-  { to: "/merchant", label: "Dashboard", icon: "🏠" },
+  { to: "/merchant", label: "Dashboard", icon: "🏠", end: true },
   { to: "/merchant/products", label: "Products", icon: "🛒" },
   { to: "/merchant/orders", label: "Orders", icon: "📦" },
   { to: "/merchant/sales", label: "Sales Report", icon: "📈" },
