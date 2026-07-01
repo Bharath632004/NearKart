@@ -2,9 +2,8 @@ FROM eclipse-temurin:17-jdk-alpine AS build
 WORKDIR /app
 RUN apk add --no-cache maven
 COPY pom.xml .
-RUN mvn dependency:go-offline -B -Dmaven.wagon.http.retryHandler.count=3
 COPY src ./src
-RUN mvn package -DskipTests
+RUN mvn package -DskipTests -Dmaven.wagon.http.retryHandler.count=5 -Dmaven.wagon.httpconnectionManager.ttlSeconds=25
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
