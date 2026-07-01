@@ -1,17 +1,13 @@
 package in.nearkart.order.service;
 
-import in.nearkart.order.dto.request.OrderItemRequest;
-import in.nearkart.order.dto.request.PlaceOrderRequest;
-import in.nearkart.order.dto.request.UpdateOrderStatusRequest;
-import in.nearkart.order.dto.response.OrderResponse;
+import in.nearkart.order.dto.CreateOrderRequest;
+import in.nearkart.order.dto.OrderResponse;
 import in.nearkart.order.entity.Order;
+import in.nearkart.order.entity.OrderItem;
 import in.nearkart.order.entity.OrderStatus;
-import in.nearkart.order.entity.PaymentMethod;
-import in.nearkart.order.exception.InvalidStatusTransitionException;
-import in.nearkart.order.exception.OrderNotCancellableException;
-import in.nearkart.order.kafka.producer.OrderEventProducer;
+import in.nearkart.order.exception.OrderCancellationException;
+import in.nearkart.order.exception.OrderNotFoundException;
 import in.nearkart.order.repository.OrderRepository;
-import in.nearkart.order.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,10 +15,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,47 +27,47 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
 
-    @Mock private OrderRepository orderRepository;
-    @Mock private OrderEventProducer eventProducer;
-    @Mock private CartService cartService;
+    @Mock
+    private OrderRepository orderRepository;
 
-    @InjectMocks private OrderServiceImpl orderService;
+    @InjectMocks
+    private OrderService orderService;
 
     private Order mockOrder;
-    private UUID orderId;
 
     @BeforeEach
     void setUp() {
-        orderId = UUID.randomUUID();
         mockOrder = Order.builder()
-                .id(orderId)
-                .orderNumber("NK-20260630-00001")
-                .customerId(UUID.randomUUID())
-                .shopId(UUID.randomUUID())
+                .id(1L)
+                .userId(101L)
+                .shopId(5L)
+                .totalAmount(580.0)
                 .status(OrderStatus.PENDING)
-                .subtotal(new BigDecimal("200.00"))
-                .deliveryFee(new BigDecimal("25.00"))
-                .taxAmount(new BigDecimal("10.00"))
-                .totalAmount(new BigDecimal("235.00"))
-                .paymentMethod(PaymentMethod.UPI)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
                 .build();
     }
 
     @Test
-    void getOrderById_Success() {
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(mockOrder));
-        OrderResponse response = orderService.getOrderById(orderId);
+    void getOrder_Success() {
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(mockOrder));
+        OrderResponse response = orderService.getOrder(1L);
         assertNotNull(response);
-        assertEquals("NK-20260630-00001", response.getOrderNumber());
+        assertEquals(1L, response.getId());
+        assertEquals("PENDING", response.getStatus());
+    }
+
+    @Test
+    void getOrder_Throws_WhenNotFound() {
+        when(orderRepository.findById(99L)).thenReturn(Optional.empty());
+        assertThrows(OrderNotFoundException.class, () -> orderService.getOrder(99L));
     }
 
     @Test
     void cancelOrder_Success_WhenPending() {
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(mockOrder));
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(mockOrder));
         when(orderRepository.save(any())).thenReturn(mockOrder);
-        doNothing().when(eventProducer).publishOrderCancelled(any());
-
-        OrderResponse response = orderService.cancelOrder(orderId, "Changed my mind", UUID.randomUUID());
+        OrderResponse response = orderService.cancelOrder(1L);
         assertNotNull(response);
         verify(orderRepository, times(1)).save(any());
     }
@@ -79,21 +75,39 @@ class OrderServiceTest {
     @Test
     void cancelOrder_Throws_WhenDelivered() {
         mockOrder.setStatus(OrderStatus.DELIVERED);
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(mockOrder));
-
-        assertThrows(OrderNotCancellableException.class,
-                () -> orderService.cancelOrder(orderId, "reason", UUID.randomUUID()));
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(mockOrder));
+        assertThrows(OrderCancellationException.class, () -> orderService.cancelOrder(1L));
     }
 
     @Test
-    void updateStatus_Throws_OnInvalidTransition() {
-        mockOrder.setStatus(OrderStatus.DELIVERED);
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(mockOrder));
+    void cancelOrder_Throws_WhenAlreadyCancelled() {
+        mockOrder.setStatus(OrderStatus.CANCELLED);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(mockOrder));
+        assertThrows(OrderCancellationException.class, () -> orderService.cancelOrder(1L));
+    }
 
-        UpdateOrderStatusRequest req = new UpdateOrderStatusRequest();
-        req.setStatus(OrderStatus.PENDING);
+    @Test
+    void placeOrder_Success() {
+        CreateOrderRequest.OrderItemRequest itemReq = new CreateOrderRequest.OrderItemRequest(
+                1L, "Test Product", 2, 100.0);
+        CreateOrderRequest request = new CreateOrderRequest(
+                101L, 5L, List.of(itemReq));
 
-        assertThrows(InvalidStatusTransitionException.class,
-                () -> orderService.updateOrderStatus(orderId, req, UUID.randomUUID()));
+        Order savedOrder = Order.builder()
+                .id(1L)
+                .userId(101L)
+                .shopId(5L)
+                .totalAmount(200.0)
+                .status(OrderStatus.PENDING)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .items(new ArrayList<>())
+                .build();
+
+        when(orderRepository.save(any())).thenReturn(savedOrder);
+        OrderResponse response = orderService.placeOrder(request);
+        assertNotNull(response);
+        assertEquals(200.0, response.getTotalAmount());
+        assertEquals("PENDING", response.getStatus());
     }
 }
