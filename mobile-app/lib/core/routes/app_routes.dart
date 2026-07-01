@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../screens/auth/splash_screen.dart';
+import '../../screens/splash_screen.dart'; // FIXED: was auth/splash_screen.dart
 import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/otp_screen.dart';
 import '../../screens/customer/home_screen.dart';

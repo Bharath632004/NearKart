@@ -78,7 +78,7 @@ class ApiService {
   static Future<Map<String, dynamic>> register({
     required String name,
     required String phone,
-    required String role, // CUSTOMER | DELIVERY
+    required String role,
   }) =>
       _request('POST', '/api/v1/auth/register',
           body: {'name': name, 'phone': phone, 'role': role});
@@ -119,8 +119,9 @@ class ApiService {
 
   // ══════════════════════════════════════════════════════════════════
   // SHOPS  →  /api/shops  &  /api/v1/shops
+  // FIXED: was returning List<ShopModel> but class is Shop
   // ══════════════════════════════════════════════════════════════════
-  static Future<List<ShopModel>> getNearbyShops({
+  static Future<List<Shop>> getNearbyShops({
     required double lat,
     required double lng,
     double radiusKm = 5.0,
@@ -131,7 +132,7 @@ class ApiService {
       'radius': radiusKm.toString(),
     });
     final list = res['data'] as List? ?? res['content'] as List? ?? [];
-    return list.map((e) => ShopModel.fromJson(e)).toList();
+    return list.map((e) => Shop.fromJson(e)).toList();
   }
 
   static Future<Map<String, dynamic>> getShopById(String shopId) =>
@@ -139,12 +140,13 @@ class ApiService {
 
   // ══════════════════════════════════════════════════════════════════
   // PRODUCTS  →  /api/products
+  // FIXED: was returning List<ProductModel> but class is Product
   // ══════════════════════════════════════════════════════════════════
-  static Future<List<ProductModel>> getProductsByShop(String shopId) async {
+  static Future<List<Product>> getProductsByShop(String shopId) async {
     final res = await _request('GET', '/api/products',
         queryParams: {'shopId': shopId});
     final list = res['data'] as List? ?? res['content'] as List? ?? [];
-    return list.map((e) => ProductModel.fromJson(e)).toList();
+    return list.map((e) => Product.fromJson(e)).toList();
   }
 
   static Future<Map<String, dynamic>> getProductById(String productId) =>
@@ -173,16 +175,17 @@ class ApiService {
 
   // ══════════════════════════════════════════════════════════════════
   // ORDERS  →  /api/orders  &  /api/v1/orders
+  // FIXED: was returning List<OrderModel> but class is Order
   // ══════════════════════════════════════════════════════════════════
   static Future<Map<String, dynamic>> placeOrder(
           Map<String, dynamic> orderData) =>
       _request('POST', '/api/orders', body: orderData);
 
-  static Future<List<OrderModel>> getMyOrders(String userId) async {
+  static Future<List<Order>> getMyOrders(String userId) async {
     final res = await _request('GET', '/api/orders',
         queryParams: {'userId': userId});
     final list = res['data'] as List? ?? res['content'] as List? ?? [];
-    return list.map((e) => OrderModel.fromJson(e)).toList();
+    return list.map((e) => Order.fromJson(e)).toList();
   }
 
   static Future<Map<String, dynamic>> getOrderById(String orderId) =>
@@ -261,7 +264,7 @@ class ApiService {
           body: {'amount': amount, 'orderId': orderId});
 
   // ══════════════════════════════════════════════════════════════════
-  // REVIEWS  →  /api/v1/shops/{shopId}/reviews (via merchant-service)
+  // REVIEWS  →  /api/v1/shops/{shopId}/reviews
   // ══════════════════════════════════════════════════════════════════
   static Future<List<dynamic>> getShopReviews(String shopId) async {
     final res = await _request('GET', '/api/v1/shops/\$shopId/reviews');
