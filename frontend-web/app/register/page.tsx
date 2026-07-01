@@ -16,18 +16,20 @@ export default function RegisterPage() {
 
   const handleStep1 = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.phone || !form.email) { toast.error('Fill all fields'); return; }
+    if (!form.name.trim() || !form.phone || !form.email) { toast.error('Fill all required fields'); return; }
+    if (form.phone.length < 10) { toast.error('Enter a valid 10-digit phone number'); return; }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) { toast.error('Enter a valid email address'); return; }
+    if (form.pincode && form.pincode.length < 6) { toast.error('Enter a valid 6-digit pincode'); return; }
     setStep(2);
   };
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.password || form.password.length < 8) { toast.error('Password must be at least 8 characters'); return; }
     if (form.password !== form.confirm) { toast.error('Passwords do not match'); return; }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setStep(3);
-    }, 1500);
+    setTimeout(() => { setLoading(false); setStep(3); }, 1500);
   };
 
   if (step === 3) return (
@@ -54,7 +56,6 @@ export default function RegisterPage() {
         </div>
 
         <div className="card p-8">
-          {/* Progress */}
           <div className="flex items-center mb-6">
             {[1, 2].map(s => (
               <div key={s} className="flex items-center">
@@ -70,23 +71,23 @@ export default function RegisterPage() {
             <form onSubmit={handleStep1} className="space-y-4">
               <h2 className="text-xl font-bold mb-4">Personal Info</h2>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name <span className="text-red-500">*</span></label>
                 <input value={form.name} onChange={e => update('name', e.target.value)} className="input-field" placeholder="Bharath C" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone <span className="text-red-500">*</span></label>
                 <div className="flex gap-2">
                   <span className="flex items-center px-3 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-600">+91</span>
-                  <input value={form.phone} onChange={e => update('phone', e.target.value)} className="input-field" placeholder="9876543210" maxLength={10} />
+                  <input value={form.phone} onChange={e => update('phone', e.target.value.replace(/\D/g, ''))} className="input-field" placeholder="9876543210" maxLength={10} inputMode="numeric" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
                 <input type="email" value={form.email} onChange={e => update('email', e.target.value)} className="input-field" placeholder="you@example.com" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
-                <input value={form.pincode} onChange={e => update('pincode', e.target.value)} className="input-field" placeholder="500001" maxLength={6} />
+                <input value={form.pincode} onChange={e => update('pincode', e.target.value.replace(/\D/g, ''))} className="input-field" placeholder="500001" maxLength={6} inputMode="numeric" />
               </div>
               <button type="submit" className="btn-primary w-full">Continue →</button>
             </form>
@@ -94,7 +95,7 @@ export default function RegisterPage() {
             <form onSubmit={handleRegister} className="space-y-4">
               <h2 className="text-xl font-bold mb-4">Set Password</h2>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <input type={showPw ? 'text' : 'password'} value={form.password} onChange={e => update('password', e.target.value)}
                     className="input-field pr-10" placeholder="Min 8 characters" />
@@ -104,7 +105,7 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password <span className="text-red-500">*</span></label>
                 <input type="password" value={form.confirm} onChange={e => update('confirm', e.target.value)} className="input-field" placeholder="Re-enter password" />
               </div>
               <div className="flex gap-3">

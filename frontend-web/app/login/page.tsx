@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { ShoppingCart, Eye, EyeOff, Phone } from 'lucide-react';
-import { useCartStore } from '@/store/cartStore';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,6 +24,13 @@ export default function LoginPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    if (tab === 'email') {
+      if (!email || !password) { toast.error('Fill in all fields'); return; }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) { toast.error('Enter a valid email address'); return; }
+    } else {
+      if (!otp || otp.length < 6) { toast.error('Enter the 6-digit OTP'); return; }
+    }
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
@@ -36,7 +42,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-3">
             <div className="w-10 h-10 bg-primary-500 rounded-xl flex items-center justify-center">
@@ -50,7 +55,6 @@ export default function LoginPage() {
         <div className="card p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Sign In</h2>
 
-          {/* Tabs */}
           <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
             {(['phone','email'] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
@@ -69,8 +73,8 @@ export default function LoginPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                   <div className="flex gap-2">
                     <span className="flex items-center px-3 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-600">+91</span>
-                    <input value={phone} onChange={e => setPhone(e.target.value)}
-                      className="input-field" placeholder="9876543210" maxLength={10} />
+                    <input value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
+                      className="input-field" placeholder="9876543210" maxLength={10} inputMode="numeric" />
                   </div>
                 </div>
                 {!otpSent ? (
@@ -83,8 +87,8 @@ export default function LoginPage() {
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Enter OTP</label>
-                      <input value={otp} onChange={e => setOtp(e.target.value)}
-                        className="input-field tracking-widest text-center text-lg" placeholder="• • • • • •" maxLength={6} />
+                      <input value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+                        className="input-field tracking-widest text-center text-lg" placeholder="• • • • • •" maxLength={6} inputMode="numeric" />
                     </div>
                     <button type="submit" disabled={loading} className="btn-primary w-full">
                       {loading ? 'Verifying...' : 'Verify & Login'}
