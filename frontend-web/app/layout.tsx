@@ -1,14 +1,17 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
-import { Toaster } from 'react-hot-toast';
+import Providers from '@/components/layout/Providers';
+
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'NearKart – Hyperlocal Quick Commerce',
-  description: 'Order from nearby Kirana stores. Ultra-fast delivery in 10–30 minutes.',
-  keywords: 'hyperlocal, quick commerce, kirana, delivery, nearkart',
+  title: 'NearKart — Hyperlocal Grocery Delivery',
+  description: 'Order fresh groceries from stores near you. Delivered in minutes.',
+  keywords: ['grocery', 'delivery', 'hyperlocal', 'India', 'NearKart'],
   openGraph: {
     title: 'NearKart',
-    description: 'Your neighbourhood store, delivered in minutes.',
+    description: 'Fresh groceries delivered from your nearest store',
     type: 'website',
   },
 };
@@ -16,20 +19,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        {/* Preconnect for Google Fonts to reduce latency */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
-      <body>
-        {children}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: { borderRadius: '12px', background: '#1a1a2e', color: '#fff' },
-            success: { iconTheme: { primary: '#f97316', secondary: '#fff' } },
-          }}
-        />
+      <body className={inter.className}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
