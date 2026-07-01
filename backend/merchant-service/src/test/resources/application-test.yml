@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: merchant-service-test
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: true
+  flyway:
+    enabled: false
+
+jwt:
+  secret: test-secret-key-for-unit-tests-only-not-production
+  expiration: 86400000
+
+aws:
+  s3:
+    bucket-name: test-bucket
+    region: ap-south-1
+
+logging:
+  level:
+    com.nearkart: DEBUG
