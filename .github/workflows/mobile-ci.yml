@@ -7,6 +7,8 @@ on:
       - 'mobile-app/**'
   pull_request:
     branches: [ develop, main ]
+    paths:
+      - 'mobile-app/**'
 
 jobs:
   flutter-build:
@@ -19,14 +21,17 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.24.0'
+          channel: 'stable'
 
       - name: Install dependencies
         working-directory: mobile-app
         run: flutter pub get
-        continue-on-error: true
+
+      - name: Analyze code
+        working-directory: mobile-app
+        run: flutter analyze
 
       - name: Run tests
         working-directory: mobile-app
         run: flutter test
-        continue-on-error: true

@@ -23,13 +23,12 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+          cache: 'maven'
 
       - name: Build and Test Auth Service
         working-directory: backend/auth-service
         run: mvn clean test
-        continue-on-error: true
 
       - name: Build and Test Order Service
         working-directory: backend/order-service
         run: mvn clean test
-        continue-on-error: true
