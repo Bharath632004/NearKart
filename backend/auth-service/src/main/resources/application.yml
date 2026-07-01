@@ -5,28 +5,33 @@ spring:
   application:
     name: auth-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/nearkart
-    username: postgres
-    password: Bharath@2004
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/nearkart}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:Bharath@2004}
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
 
 eureka:
   client:
-    enabled: false
+    enabled: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
 
-nearkart:
-  jwt:
-    secret: NearKartSuperSecretKey2026SecureString!!
-    access-token-expiry-ms: 900000
-    refresh-token-expiry-ms: 604800000
+jwt:
+  secret: ${JWT_SECRET:TmVhcktBUlRTdXBlclNlY3JldEtleTIwMjZTZWN1cmVTdHJpbmc=}
+  expiry-ms: 900000
+  access-token-expiry: 900000
+  refresh-token-expiry: 604800000
+
+app:
   otp:
     expiry-minutes: 5
+    length: 6
 
 management:
   endpoints:
@@ -36,5 +41,5 @@ management:
 
 logging:
   level:
-    in.nearkart: DEBUG
+    com.nearkart: DEBUG
     org.springframework.security: INFO

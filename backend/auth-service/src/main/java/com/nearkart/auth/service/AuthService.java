@@ -14,11 +14,13 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final BCryptPasswordEncoder passwordEncoder;
 
-    public AuthService(UserRepository userRepository, JwtUtil jwtUtil) {
+    public AuthService(UserRepository userRepository, JwtUtil jwtUtil,
+                       BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -44,12 +46,13 @@ public class AuthService {
         User user = userRepository.findByPhone(request.getPhone())
                 .orElseThrow(() -> new RuntimeException("Invalid phone or password"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid phone or password");
-        }
-
+        // Check active status BEFORE password to give correct error message
         if (!Boolean.TRUE.equals(user.getActive())) {
             throw new RuntimeException("Account is disabled. Contact support.");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Invalid phone or password");
         }
 
         return new AuthResponse(jwtUtil.generateToken(user.getPhone(), user.getRole()));
