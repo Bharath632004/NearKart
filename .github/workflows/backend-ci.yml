@@ -27,8 +27,18 @@ jobs:
 
       - name: Build and Test Auth Service
         working-directory: backend/auth-service
-        run: mvn clean test
+        run: mvn clean verify
 
       - name: Build and Test Order Service
         working-directory: backend/order-service
-        run: mvn clean test
+        run: mvn clean verify
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            backend/auth-service/target/surefire-reports/
+            backend/order-service/target/surefire-reports/
+          retention-days: 7

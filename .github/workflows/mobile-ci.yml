@@ -21,8 +21,9 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
+          flutter-version: '3.32.0'
           channel: 'stable'
+          cache: true
 
       - name: Install dependencies
         working-directory: mobile-app
@@ -34,4 +35,12 @@ jobs:
 
       - name: Run tests
         working-directory: mobile-app
-        run: flutter test
+        run: flutter test --coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-coverage
+          path: mobile-app/coverage/lcov.info
+          retention-days: 7

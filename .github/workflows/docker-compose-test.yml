@@ -19,9 +19,16 @@ jobs:
       - name: Copy env file
         run: cp devops/.env.example devops/.env
 
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
       - name: Start infrastructure only (Postgres + Redis)
         run: |
-          docker-compose -f devops/docker-compose.yml up -d postgres redis
+          docker compose -f devops/docker-compose.yml up -d postgres redis
         env:
           DOCKER_BUILDKIT: 1
 
@@ -43,11 +50,11 @@ jobs:
 
       - name: Run backend unit tests against test DB
         run: |
-          mvn test -pl backend/auth-service,backend/user-service,backend/product-service \
+          mvn verify -pl backend/auth-service,backend/user-service,backend/product-service \
             -Dspring.datasource.url=jdbc:postgresql://localhost:5432/nearkart \
             -Dspring.datasource.username=nearkart_user \
-            -Dspring.datasource.password=nearkart_pass -q || true
+            -Dspring.datasource.password=nearkart_pass -q
 
       - name: Tear down
         if: always()
-        run: docker-compose -f devops/docker-compose.yml down -v
+        run: docker compose -f devops/docker-compose.yml down -v
