@@ -27,11 +27,16 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public read endpoints
                 .requestMatchers(HttpMethod.GET,  "/api/products").permitAll()
+                .requestMatchers(HttpMethod.GET,  "/api/products/available").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/products/{id}").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/products/search").permitAll()
+                .requestMatchers(HttpMethod.GET,  "/api/products/filter/price").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/products/category/**").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/products/shop/**").permitAll()
                 .requestMatchers(HttpMethod.GET,  "/api/products/categories").permitAll()
+                .requestMatchers(HttpMethod.GET,  "/api/products/categories/**").permitAll()
+                // Swagger / OpenAPI
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 // Actuator
                 .requestMatchers("/actuator/**").permitAll()
                 // All write operations require authentication

@@ -3,6 +3,7 @@ package com.nearkart.productservice.service;
 import com.nearkart.productservice.dto.*;
 import com.nearkart.productservice.model.Category;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface ProductService {
@@ -13,13 +14,23 @@ public interface ProductService {
 
     List<ProductResponse> getAllProducts();
 
+    List<ProductResponse> getAvailableProducts();
+
     List<ProductResponse> getProductsByShop(Long shopId);
 
     List<ProductResponse> getProductsByCategory(Long categoryId);
 
     List<ProductResponse> searchProducts(String keyword);
 
+    List<ProductResponse> getProductsByPriceRange(BigDecimal min, BigDecimal max);
+
+    List<ProductResponse> getOutOfStockProducts();
+
+    long countProductsByShop(Long shopId);
+
     ProductResponse updateProduct(Long id, ProductRequest request);
+
+    ProductResponse updateStock(Long id, int quantity);
 
     void deleteProduct(Long id);
 

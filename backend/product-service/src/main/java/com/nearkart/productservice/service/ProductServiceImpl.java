@@ -11,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,9 +36,8 @@ public class ProductServiceImpl implements ProductService {
                 .category(category)
                 .shopId(request.getShopId())
                 .available(true)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
                 .build();
+        // createdAt and updatedAt are managed by @CreationTimestamp / @UpdateTimestamp
 
         return toResponse(productRepository.save(product));
     }
@@ -53,6 +52,14 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(readOnly = true)
     public List<ProductResponse> getAllProducts() {
         return productRepository.findAll().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getAvailableProducts() {
+        return productRepository.findByAvailableTrue().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -76,16 +83,41 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> searchProducts(String keyword) {
-        return productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword)
+        return productRepository
+                .findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword)
                 .stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getProductsByPriceRange(BigDecimal min, BigDecimal max) {
+        if (min.compareTo(max) > 0) {
+            throw new IllegalArgumentException("min price cannot be greater than max price");
+        }
+        return productRepository.findByPriceRange(min, max).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getOutOfStockProducts() {
+        return productRepository.findOutOfStockProducts().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countProductsByShop(Long shopId) {
+        return productRepository.countByShopId(shopId);
+    }
+
+    @Override
     public ProductResponse updateProduct(Long id, ProductRequest request) {
         Product product = findProductOrThrow(id);
-
         Category category = resolveCategory(request.getCategoryId(), product.getCategory());
 
         product.setName(request.getName());
@@ -94,8 +126,16 @@ public class ProductServiceImpl implements ProductService {
         product.setStockQuantity(request.getStockQuantity());
         product.setImageUrl(request.getImageUrl());
         product.setCategory(category);
-        product.setUpdatedAt(LocalDateTime.now());
+        // updatedAt handled by @UpdateTimestamp
 
+        return toResponse(productRepository.save(product));
+    }
+
+    @Override
+    public ProductResponse updateStock(Long id, int quantity) {
+        Product product = findProductOrThrow(id);
+        product.setStockQuantity(quantity);
+        product.setAvailable(quantity > 0);
         return toResponse(productRepository.save(product));
     }
 
@@ -111,7 +151,6 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse toggleAvailability(Long id) {
         Product product = findProductOrThrow(id);
         product.setAvailable(!product.isAvailable());
-        product.setUpdatedAt(LocalDateTime.now());
         return toResponse(productRepository.save(product));
     }
 
@@ -119,6 +158,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Category createCategory(CategoryRequest request) {
+        if (categoryRepository.existsByNameIgnoreCase(request.getName())) {
+            throw new IllegalArgumentException("Category already exists: " + request.getName());
+        }
         Category category = Category.builder()
                 .name(request.getName())
                 .description(request.getDescription())
