@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/routes/app_routes.dart';
+import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'services/notification_service.dart';
 
@@ -16,7 +17,6 @@ class _NearKartAppState extends State<NearKartApp> {
   @override
   void initState() {
     super.initState();
-    // Init notifications after first frame so context is ready
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
       await NotificationService.init(
@@ -32,13 +32,7 @@ class _NearKartAppState extends State<NearKartApp> {
       title: 'NearKart',
       navigatorKey: widget.navigatorKey,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        // primarySwatch removed — deprecated in Material 3
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6C63FF),
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.light,
       onGenerateRoute: AppRoutes.generateRoute,
       initialRoute: AppRoutes.splash,
     );

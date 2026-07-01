@@ -30,7 +30,6 @@ class CartProvider extends ChangeNotifier {
 
   void addItem(Product product) {
     if (_shopId != null && _shopId != product.shopId) {
-      // Different shop - clear cart first
       _items.clear();
     }
     _shopId = product.shopId;
@@ -46,6 +45,14 @@ class CartProvider extends ChangeNotifier {
       );
     }
     notifyListeners();
+  }
+
+  /// Increment an already-in-cart item by its CartItem reference
+  void addItemById(CartItem item) {
+    if (_items.containsKey(item.id)) {
+      _items[item.id]!.quantity++;
+      notifyListeners();
+    }
   }
 
   void decreaseItem(String productId) {

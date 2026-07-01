@@ -6,6 +6,9 @@ import 'services/notification_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/order_provider.dart';
+import 'providers/wallet_provider.dart';
+import 'providers/shop_provider.dart';
+import 'providers/review_provider.dart';
 import 'app.dart';
 
 /// Must be top-level for Firebase background isolate
@@ -14,19 +17,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await NotificationService.showLocalNotification(message);
 }
 
-final GlobalKey<NavigatorState> navigatorKey =
-    GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialise Firebase
   await Firebase.initializeApp();
 
-  // Register background FCM handler BEFORE runApp (required for background isolate)
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Restore saved session before rendering anything
   final authProvider = AuthProvider();
   await authProvider.initAuth();
 
@@ -35,7 +34,14 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider<AuthProvider>(value: authProvider),
         ChangeNotifierProvider<CartProvider>(create: (_) => CartProvider()),
-        ChangeNotifierProvider<OrderProvider>(create: (_) => OrderProvider()),
+        ChangeNotifierProvider<OrderProvider>(
+            create: (_) => OrderProvider()),
+        ChangeNotifierProvider<WalletProvider>(
+            create: (_) => WalletProvider()),
+        ChangeNotifierProvider<ShopProvider>(
+            create: (_) => ShopProvider()),
+        ChangeNotifierProvider<ReviewProvider>(
+            create: (_) => ReviewProvider()),
       ],
       child: NearKartApp(navigatorKey: navigatorKey),
     ),
