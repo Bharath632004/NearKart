@@ -1,62 +1,90 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
+import API from "../../api/axios";
 
-const revenueData = [
-  { month: "Jan", revenue: 45000 }, { month: "Feb", revenue: 62000 },
-  { month: "Mar", revenue: 58000 }, { month: "Apr", revenue: 71000 },
-  { month: "May", revenue: 89000 }, { month: "Jun", revenue: 102000 },
+const mockMonthly = [
+  { month: "Jan", orders: 300, revenue: 45000 },
+  { month: "Feb", orders: 450, revenue: 67000 },
+  { month: "Mar", orders: 400, revenue: 60000 },
+  { month: "Apr", orders: 600, revenue: 90000 },
+  { month: "May", orders: 750, revenue: 112000 },
+  { month: "Jun", orders: 900, revenue: 135000 },
 ];
 
-const categoryData = [
-  { name: "Groceries", value: 45 }, { name: "Dairy", value: 25 },
-  { name: "Snacks", value: 15 }, { name: "Others", value: 15 },
+const mockCategory = [
+  { name: "Groceries", value: 45 },
+  { name: "Dairy", value: 25 },
+  { name: "Vegetables", value: 20 },
+  { name: "Snacks", value: 10 },
 ];
 
-const COLORS = ["#4F46E5", "#7C3AED", "#10B981", "#F59E0B"];
+const COLORS = ["#4F46E5", "#10B981", "#F59E0B", "#EF4444"];
 
 export default function Analytics() {
+  const [monthly, setMonthly] = useState(mockMonthly);
+  const [category] = useState(mockCategory);
+
+  useEffect(() => {
+    API.get("/admin/analytics").then(res => setMonthly(res.data.monthly || mockMonthly)).catch(() => {});
+  }, []);
+
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Analytics Reports</h2>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">Platform Analytics</h2>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-xl shadow p-6">
-          <h3 className="font-semibold text-gray-700 mb-4">Monthly Revenue (₹)</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={revenueData}>
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">Monthly Orders</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={monthly}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
-              <Tooltip formatter={(v) => `₹${v.toLocaleString()}`} />
-              <Bar dataKey="revenue" fill="#4F46E5" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="bg-white rounded-xl shadow p-6">
-          <h3 className="font-semibold text-gray-700 mb-4">Category Distribution</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie data={categoryData} cx="50%" cy="50%" outerRadius={90} dataKey="value" label={({ name, value }) => `${name} ${value}%`}>
-                {categoryData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
-              </Pie>
               <Tooltip />
-            </PieChart>
+              <Legend />
+              <Line type="monotone" dataKey="orders" stroke="#4F46E5" strokeWidth={2} dot={{ r: 4 }} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
-        <div className="bg-white rounded-xl shadow p-6 lg:col-span-2">
-          <h3 className="font-semibold text-gray-700 mb-4">Revenue Trend</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={revenueData}>
+
+        <div className="bg-white rounded-xl shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">Monthly Revenue (₹)</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={monthly}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis />
               <Tooltip formatter={(v) => `₹${v.toLocaleString()}`} />
               <Legend />
-              <Line type="monotone" dataKey="revenue" stroke="#4F46E5" strokeWidth={3} dot={{ r: 5 }} />
-            </LineChart>
+              <Bar dataKey="revenue" fill="#10B981" radius={[4, 4, 0, 0]} />
+            </BarChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow p-6">
+        <h3 className="text-lg font-semibold text-gray-700 mb-4">Sales by Category</h3>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-8">
+          <ResponsiveContainer width={260} height={260}>
+            <PieChart>
+              <Pie data={category} cx="50%" cy="50%" outerRadius={100} dataKey="value"
+                label={({ name, value }) => `${name} ${value}%`}>
+                {category.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="flex flex-col gap-2">
+            {category.map((c, i) => (
+              <div key={c.name} className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }}></div>
+                <span className="text-sm text-gray-600">{c.name}: <strong>{c.value}%</strong></span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
