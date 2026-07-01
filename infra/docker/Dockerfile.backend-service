@@ -1,0 +1,25 @@
+# ── Generic Dockerfile for all Spring Boot microservices ────────────────────
+# Usage: docker build --build-arg SERVICE=<service-name> -f Dockerfile.backend-service ../../backend/<service-name>
+# ── Stage 1: Build ──────────────────────────────────────────────────────────
+FROM maven:3.9-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+COPY src ./src
+RUN mvn package -DskipTests -B
+
+# ── Stage 2: Run ────────────────────────────────────────────────────────────
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+
+RUN addgroup -S nearkart && adduser -S nearkart -G nearkart
+USER nearkart
+
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8080
+
+# Pass active profile via env var (default: dev)
+ENV SPRING_PROFILES_ACTIVE=dev
+
+ENTRYPOINT ["java", "-Xms128m", "-Xmx512m", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]

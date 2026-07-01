@@ -1,0 +1,10 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NearKart Kubernetes Namespace
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nearkart
+  labels:
+    app.kubernetes.io/managed-by: kubectl
+    environment: production

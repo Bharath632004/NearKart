@@ -1,0 +1,422 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NearKart — Local Development Docker Compose
+# Mirrors the AWS infra: PostgreSQL (RDS), Redis (ElastiCache), all microservices
+# Usage: docker compose up --build
+# ─────────────────────────────────────────────────────────────────────────────
+version: "3.9"
+
+networks:
+  nearkart-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+
+services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: nearkart-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nearkartdb
+      POSTGRES_USER: nearkart_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../database/migrations:/docker-entrypoint-initdb.d:ro
+    networks: [nearkart-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nearkart_admin -d nearkartdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nearkart-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks: [nearkart-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Service Discovery (Eureka) ───────────────────────────────────────────────
+  discovery-server:
+    build:
+      context: ../../backend/discovery-server
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-discovery
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8761:8761"
+    networks: [nearkart-net]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  # ── API Gateway ──────────────────────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ../../backend/api-gateway
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-api-gateway
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    ports:
+      - "8080:8080"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Auth Service ─────────────────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: ../../backend/auth-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-auth
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── User Service ─────────────────────────────────────────────────────────────
+  user-service:
+    build:
+      context: ../../backend/user-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-user
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Shop Service ─────────────────────────────────────────────────────────────
+  shop-service:
+    build:
+      context: ../../backend/shop-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-shop
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Product Service ───────────────────────────────────────────────────────────
+  product-service:
+    build:
+      context: ../../backend/product-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-product
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      AWS_S3_BUCKET: ${S3_MEDIA_BUCKET:-nearkart-media-dev}
+      AWS_REGION: ap-south-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Inventory Service ─────────────────────────────────────────────────────────
+  inventory-service:
+    build:
+      context: ../../backend/inventory-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-inventory
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Order Service ─────────────────────────────────────────────────────────────
+  order-service:
+    build:
+      context: ../../backend/order-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-order
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Payment Service ───────────────────────────────────────────────────────────
+  payment-service:
+    build:
+      context: ../../backend/payment-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-payment
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Delivery Service ──────────────────────────────────────────────────────────
+  delivery-service:
+    build:
+      context: ../../backend/delivery-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-delivery
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Merchant Service ──────────────────────────────────────────────────────────
+  merchant-service:
+    build:
+      context: ../../backend/merchant-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-merchant
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      AWS_S3_BUCKET: ${S3_KYC_BUCKET:-nearkart-kyc-docs-dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Notification Service ──────────────────────────────────────────────────────
+  notification-service:
+    build:
+      context: ../../backend/notification-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-notification
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      AWS_SES_REGION: ap-south-1
+      AWS_SNS_REGION: ap-south-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Analytics Service ─────────────────────────────────────────────────────────
+  analytics-service:
+    build:
+      context: ../../backend/analytics-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-analytics
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Admin Service ─────────────────────────────────────────────────────────────
+  admin-service:
+    build:
+      context: ../../backend/admin-service
+      dockerfile: ../../infra/docker/Dockerfile.backend-service
+    container_name: nearkart-admin-svc
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nearkartdb
+      SPRING_DATASOURCE_USERNAME: nearkart_admin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-localdevpassword}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    networks: [nearkart-net]
+
+  # ── Frontend (Next.js) ────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost/api
+    container_name: nearkart-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+    networks: [nearkart-net]
+
+  # ── Admin Panel ───────────────────────────────────────────────────────────────
+  admin-panel:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.admin-panel
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost/api
+    container_name: nearkart-admin-panel
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api-gateway
+    networks: [nearkart-net]
+
+  # ── NGINX Reverse Proxy (local) ───────────────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: nearkart-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - admin-panel
+      - api-gateway
+    networks: [nearkart-net]

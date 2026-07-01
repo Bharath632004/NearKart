@@ -1,0 +1,70 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NearKart NGINX Ingress
+# Requires: kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/aws/deploy.yaml
+# Routes:
+#   nearkart.in/api/*     → api-gateway:8080
+#   admin.nearkart.in/*   → admin-panel:3001
+#   nearkart.in/*         → frontend:3000
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nearkart-ingress
+  namespace: nearkart
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: "20m"
+    # SSL termination handled by CloudFront → pass through HTTP inside cluster
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Enable CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://nearkart.in,https://www.nearkart.in"
+spec:
+  rules:
+    # ── Main domain — customer frontend ──────────────────────────────────────
+    - host: nearkart.in
+      http:
+        paths:
+          # API routes → api-gateway
+          - path: /api(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080
+          # Everything else → Next.js frontend
+          - path: /()(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000
+
+    # ── www subdomain — redirect to apex ─────────────────────────────────────
+    - host: www.nearkart.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000
+
+    # ── Admin subdomain ───────────────────────────────────────────────────────
+    - host: admin.nearkart.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-panel
+                port:
+                  number: 3001

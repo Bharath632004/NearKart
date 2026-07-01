@@ -1,0 +1,16 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NearKart Shared ConfigMap — non-sensitive env vars shared by all services
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nearkart-common-config
+  namespace: nearkart
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  AWS_REGION: "ap-south-1"
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery-server:8761/eureka"
+  SPRING_DATA_REDIS_PORT: "6379"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "validate"
+  SPRING_JPA_SHOW_SQL: "false"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,prometheus"
