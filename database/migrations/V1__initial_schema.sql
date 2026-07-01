@@ -1,4 +1,0 @@
--- Flyway Migration V1
--- Run schema.sql as V1 migration
--- This file is managed by Flyway for version-controlled DB migrations
--- See schema.sql for full DDL
