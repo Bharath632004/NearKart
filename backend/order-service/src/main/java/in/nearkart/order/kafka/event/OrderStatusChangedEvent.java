@@ -16,8 +16,6 @@ public class OrderStatusChangedEvent {
 
     private UUID orderId;
     private String orderNumber;
-    private UUID customerId;
-    private UUID shopId;
     private String previousStatus;
     private String newStatus;
     private LocalDateTime changedAt;

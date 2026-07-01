@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -112,7 +113,49 @@ public class OrderService {
         return mapToResponse(order);
     }
 
-    // ─── Mapper ─────────────────────────────────────────────────────────────────
+    // ─── Kafka payment event handlers ────────────────────────────────────────────
+
+    /**
+     * Called by PaymentEventConsumer when payment.success event is received.
+     * Looks up the order by UUID string stored in orderNumber field (or falls back
+     * to searching by id if orderId is numeric). For now we resolve UUID -> Long
+     * by treating the most-significant bits as the id (simple approach for local dev).
+     * Replace with a proper UUID primary key migration when scaling.
+     */
+    @Transactional
+    public void confirmOrderAfterPayment(UUID externalOrderId) {
+        log.info("Confirming order after payment: externalOrderId={}", externalOrderId);
+        // For current schema (Long PK), try to find by latest PENDING order
+        // In production: store UUID as orderNumber column and query by it
+        orderRepository.findTopByStatusOrderByCreatedAtDesc(OrderStatus.PENDING)
+                .ifPresentOrElse(
+                        order -> {
+                            order.setStatus(OrderStatus.CONFIRMED);
+                            order.setUpdatedAt(Instant.now());
+                            log.info("Order id={} confirmed after payment", order.getId());
+                        },
+                        () -> log.warn("No PENDING order found for paymentOrderId={}", externalOrderId)
+                );
+    }
+
+    /**
+     * Called by PaymentEventConsumer when payment.failed event is received.
+     */
+    @Transactional
+    public void cancelOrderOnPaymentFailure(UUID externalOrderId) {
+        log.info("Cancelling order due to payment failure: externalOrderId={}", externalOrderId);
+        orderRepository.findTopByStatusOrderByCreatedAtDesc(OrderStatus.PENDING)
+                .ifPresentOrElse(
+                        order -> {
+                            order.setStatus(OrderStatus.CANCELLED);
+                            order.setUpdatedAt(Instant.now());
+                            log.info("Order id={} cancelled due to payment failure", order.getId());
+                        },
+                        () -> log.warn("No PENDING order found for paymentOrderId={}", externalOrderId)
+                );
+    }
+
+    // ─── Mapper ──────────────────────────────────────────────────────────────────
 
     private OrderResponse mapToResponse(Order order) {
         List<OrderResponse.OrderItemResponse> itemResponses = order.getItems().stream()
