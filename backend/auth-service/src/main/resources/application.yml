@@ -7,7 +7,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/nearkart}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:Bharath@2004}
+    password: ${DB_PASSWORD:changeme}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -25,7 +25,6 @@ eureka:
 jwt:
   secret: ${JWT_SECRET:TmVhcktBUlRTdXBlclNlY3JldEtleTIwMjZTZWN1cmVTdHJpbmc=}
   expiry-ms: 900000
-  access-token-expiry: 900000
   refresh-token-expiry: 604800000
 
 app:
