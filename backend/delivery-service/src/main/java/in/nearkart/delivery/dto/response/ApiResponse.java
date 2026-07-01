@@ -27,6 +27,26 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    // Single-arg overload: wraps the value as data with a default message
+    @SuppressWarnings("unchecked")
+    public static <T> ApiResponse<T> success(T data) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .message("Success")
+                .data(data)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
+    // Single String overload: message only, no data
+    public static ApiResponse<String> success(String message) {
+        return ApiResponse.<String>builder()
+                .success(true)
+                .message(message)
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
     public static <T> ApiResponse<T> error(String message) {
         return ApiResponse.<T>builder()
                 .success(false)

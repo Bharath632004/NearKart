@@ -43,6 +43,12 @@ public class LiveLocationServiceImpl implements LiveLocationService {
         return toResponse(saved);
     }
 
+    // 2-arg overload for WebSocket handler (no assignmentId in WS context)
+    @Override
+    public LocationResponse updateLocation(UUID partnerId, UpdateLocationRequest request) {
+        return updateLocation(partnerId, null, request);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public LocationResponse getLatestLocation(UUID assignmentId) {

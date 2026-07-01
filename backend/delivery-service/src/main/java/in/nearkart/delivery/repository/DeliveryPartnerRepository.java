@@ -1,6 +1,9 @@
 package in.nearkart.delivery.repository;
 
 import in.nearkart.delivery.entity.DeliveryPartner;
+import in.nearkart.delivery.entity.PartnerStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -20,6 +23,14 @@ public interface DeliveryPartnerRepository extends JpaRepository<DeliveryPartner
     boolean existsByPhone(String phone);
 
     boolean existsByEmail(String email);
+
+    // Used by DeliveryPartnerServiceImpl.register()
+    boolean existsByAadhaarNumber(String aadhaarNumber);
+
+    boolean existsByVehicleNumber(String vehicleNumber);
+
+    // Used by DeliveryPartnerServiceImpl.listByStatus()
+    Page<DeliveryPartner> findByStatus(PartnerStatus status, Pageable pageable);
 
     @Query(value = """
         SELECT p.* FROM delivery_partners p

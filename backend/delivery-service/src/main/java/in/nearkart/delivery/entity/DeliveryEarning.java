@@ -40,4 +40,12 @@ public class DeliveryEarning {
 
     @CreationTimestamp
     private LocalDateTime createdAt;
+
+    /**
+     * Explicit boolean accessor so callers can use e.isSettled().
+     * Lombok generates getSettled() for Boolean fields; this bridges the gap.
+     */
+    public boolean isSettled() {
+        return Boolean.TRUE.equals(settled);
+    }
 }
