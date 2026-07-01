@@ -1,6 +1,7 @@
 package com.nearkart.admin.service;
 
 import com.nearkart.admin.dto.CouponRequestDTO;
+import com.nearkart.admin.exception.ResourceNotFoundException;
 import com.nearkart.admin.model.Coupon;
 import com.nearkart.admin.repository.CouponRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,9 +30,10 @@ public class AdminCouponService {
         return saved;
     }
 
+    // Fix #2: Throws ResourceNotFoundException (HTTP 404) instead of raw RuntimeException (HTTP 500)
     public void deactivateCoupon(Long couponId, String adminUsername) {
         Coupon coupon = couponRepository.findById(couponId)
-            .orElseThrow(() -> new RuntimeException("Coupon not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Coupon not found with id: " + couponId));
         coupon.setActive(false);
         couponRepository.save(coupon);
         auditLogService.log(adminUsername, "DEACTIVATE_COUPON", "COUPON", couponId, null);

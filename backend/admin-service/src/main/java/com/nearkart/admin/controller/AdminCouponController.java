@@ -5,6 +5,7 @@ import com.nearkart.admin.model.Coupon;
 import com.nearkart.admin.service.AdminCouponService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,11 +31,13 @@ public class AdminCouponController {
         return ResponseEntity.ok(couponService.getActiveCoupons());
     }
 
+    // Fix #5: Returns 201 Created instead of 200 OK for resource creation
     @PostMapping
     public ResponseEntity<Coupon> createCoupon(
             @Valid @RequestBody CouponRequestDTO dto,
             @AuthenticationPrincipal UserDetails admin) {
-        return ResponseEntity.ok(couponService.createCoupon(dto, admin.getUsername()));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(couponService.createCoupon(dto, admin.getUsername()));
     }
 
     @PutMapping("/{couponId}/deactivate")

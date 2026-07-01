@@ -30,7 +30,8 @@ public class AuditLogService {
         return auditLogRepository.findByTargetEntityAndTargetIdOrderByTimestampDesc(targetEntity, targetId);
     }
 
+    // Fix #1: Returns logs sorted by timestamp descending
     public List<AuditLog> getAllLogs() {
-        return auditLogRepository.findAll();
+        return auditLogRepository.findAllByOrderByTimestampDesc();
     }
 }

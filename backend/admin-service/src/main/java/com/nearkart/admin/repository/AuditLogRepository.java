@@ -9,4 +9,6 @@ import java.util.List;
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     List<AuditLog> findByAdminUsernameOrderByTimestampDesc(String adminUsername);
     List<AuditLog> findByTargetEntityAndTargetIdOrderByTimestampDesc(String targetEntity, Long targetId);
+    // Fix #1: getAllLogs now sorted by timestamp descending
+    List<AuditLog> findAllByOrderByTimestampDesc();
 }
