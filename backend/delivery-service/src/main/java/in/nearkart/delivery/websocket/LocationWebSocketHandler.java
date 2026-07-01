@@ -10,60 +10,62 @@ import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class LocationWebSocketHandler extends TextWebSocketHandler {
 
-    private final LiveLocationService locationService;
+    private final LiveLocationService liveLocationService;
     private final ObjectMapper objectMapper;
 
-    private final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
+    // partnerId -> WebSocketSession
+    private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        String partnerId = extractPartnerId(session);
+        String partnerId = getPartnerId(session);
         sessions.put(partnerId, session);
         log.info("WebSocket connected: partnerId={}", partnerId);
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        String partnerId = extractPartnerId(session);
-        UpdateLocationRequest req = objectMapper.readValue(message.getPayload(), UpdateLocationRequest.class);
-        locationService.updateLocation(UUID.fromString(partnerId), req);
-        session.sendMessage(new TextMessage("{\"status\":\"location_updated\"}"));
+        String partnerId = getPartnerId(session);
+        UpdateLocationRequest request = objectMapper.readValue(message.getPayload(), UpdateLocationRequest.class);
+        liveLocationService.updateLocation(Long.parseLong(partnerId), request);
+        session.sendMessage(new TextMessage("{\"status\":\"location updated\"}"));
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        String partnerId = extractPartnerId(session);
+        String partnerId = getPartnerId(session);
         sessions.remove(partnerId);
-        log.info("WebSocket disconnected: partnerId={}, status={}", partnerId, status);
+        log.info("WebSocket disconnected: partnerId={}", partnerId);
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
-        log.error("WebSocket transport error for session {}: {}", session.getId(), exception.getMessage());
+        log.error("WebSocket error for session {}: {}", session.getId(), exception.getMessage());
     }
 
-    private String extractPartnerId(WebSocketSession session) {
-        String path = session.getUri().getPath();
-        String[] parts = path.split("/");
-        return parts[parts.length - 1];
-    }
-
-    public void broadcastToSession(String targetPartnerId, String payload) {
-        WebSocketSession target = sessions.get(targetPartnerId);
-        if (target != null && target.isOpen()) {
+    public static void sendToPartner(String partnerId, String message) {
+        WebSocketSession session = sessions.get(partnerId);
+        if (session != null && session.isOpen()) {
             try {
-                target.sendMessage(new TextMessage(payload));
+                session.sendMessage(new TextMessage(message));
             } catch (Exception e) {
-                log.error("Failed to broadcast to {}: {}", targetPartnerId, e.getMessage());
+                log.error("Failed to send WS message to partnerId={}", partnerId, e);
             }
         }
+    }
+
+    private String getPartnerId(WebSocketSession session) {
+        String query = session.getUri() != null ? session.getUri().getQuery() : "";
+        if (query != null && query.contains("partnerId=")) {
+            return query.split("partnerId=")[1].split("&")[0];
+        }
+        return session.getId();
     }
 }
