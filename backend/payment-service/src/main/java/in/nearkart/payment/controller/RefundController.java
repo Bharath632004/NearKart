@@ -20,18 +20,26 @@ public class RefundController {
 
     private final RefundService refundService;
 
-    @PostMapping
+    /**
+     * Initiate refund for a given payment.
+     */
+    @PostMapping("/payment/{paymentId}")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<RefundResponse>> initiateRefund(
+            @PathVariable UUID paymentId,
             @Valid @RequestBody RefundRequest request) {
-        RefundResponse resp = refundService.initiateRefund(request);
+        RefundResponse resp = refundService.initiateRefund(paymentId, request);
         return ResponseEntity.ok(ApiResponse.success("Refund initiated", resp));
     }
 
-    @GetMapping("/order/{orderId}")
-    public ResponseEntity<ApiResponse<List<RefundResponse>>> getRefunds(
-            @PathVariable UUID orderId) {
+    /**
+     * Get all refunds for a given payment.
+     */
+    @GetMapping("/payment/{paymentId}")
+    public ResponseEntity<ApiResponse<List<RefundResponse>>> getRefundsByPaymentId(
+            @PathVariable UUID paymentId) {
+        List<RefundResponse> refunds = refundService.getRefundsByPaymentId(paymentId);
         return ResponseEntity.ok(
-                ApiResponse.success("Refunds fetched", refundService.getRefundsByOrderId(orderId)));
+                ApiResponse.success("Refunds fetched", refunds));
     }
 }
