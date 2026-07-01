@@ -1,11 +1,16 @@
-FROM eclipse-temurin:17-jdk-alpine AS build
+# Stage 1 – Build
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
-RUN apk add --no-cache maven && mvn clean package -DskipTests
+RUN mvn clean package -DskipTests \
+    -Dmaven.wagon.http.retryHandler.count=5 \
+    -Dmaven.wagon.httpconnectionManager.ttlSeconds=25 \
+    -Dmaven.resolver.transport=wagon
 
-FROM eclipse-temurin:17-jre-alpine
+# Stage 2 – Runtime
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/inventory-service-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8085
 ENTRYPOINT ["java", "-jar", "app.jar"]

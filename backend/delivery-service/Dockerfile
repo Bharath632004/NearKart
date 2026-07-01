@@ -1,11 +1,16 @@
-FROM eclipse-temurin:21-jdk-alpine AS build
+# Stage 1 – Build
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
-RUN ./mvnw package -DskipTests 2>/dev/null || (apt-get install -y maven && mvn package -DskipTests)
+RUN mvn clean package -DskipTests \
+    -Dmaven.wagon.http.retryHandler.count=5 \
+    -Dmaven.wagon.httpconnectionManager.ttlSeconds=25 \
+    -Dmaven.resolver.transport=wagon
 
+# Stage 2 – Runtime
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/delivery-service-1.0.0.jar app.jar
+COPY --from=builder /app/target/*.jar app.jar
 EXPOSE 8086
-ENTRYPOINT ["java","-jar","app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
