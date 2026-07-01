@@ -7,8 +7,10 @@ import com.nearkart.user.repository.AddressRepository;
 import com.nearkart.user.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -55,7 +57,7 @@ public class UserProfileService {
     @Transactional
     public AddressResponse addAddress(UUID userId, AddressRequest request) {
         UserProfile profile = findOrThrow(userId);
-        if (request.isDefault()) {
+        if (request.isDefaultAddress()) {
             addressRepo.clearDefaultForUser(userId);
         }
         Address address = Address.builder()
@@ -68,7 +70,7 @@ public class UserProfileService {
                 .pincode(request.getPincode())
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
-                .isDefault(request.isDefault())
+                .defaultAddress(request.isDefaultAddress())
                 .build();
         addressRepo.save(address);
         return toAddressResponse(address);
@@ -81,17 +83,20 @@ public class UserProfileService {
 
     @Transactional
     public void deleteAddress(UUID userId, UUID addressId) {
+        // Returns 404 if address does not exist
         Address address = addressRepo.findById(addressId)
-                .orElseThrow(() -> new IllegalArgumentException("Address not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Address not found"));
+        // Returns 403 if address belongs to a different user
         if (!address.getUserProfile().getUserId().equals(userId)) {
-            throw new IllegalArgumentException("Unauthorized");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied: address belongs to another user");
         }
         addressRepo.delete(address);
     }
 
     private UserProfile findOrThrow(UUID userId) {
+        // Returns 404 instead of 500 when profile is missing
         return profileRepo.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User profile not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User profile not found"));
     }
 
     private UserProfileResponse toResponse(UserProfile p) {
@@ -118,7 +123,7 @@ public class UserProfileService {
                 .pincode(a.getPincode())
                 .latitude(a.getLatitude())
                 .longitude(a.getLongitude())
-                .isDefault(a.isDefault())
+                .defaultAddress(a.isDefaultAddress())
                 .build();
     }
 }

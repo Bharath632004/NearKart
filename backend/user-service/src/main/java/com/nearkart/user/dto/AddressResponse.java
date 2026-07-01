@@ -16,5 +16,6 @@ public class AddressResponse {
     private String pincode;
     private Double latitude;
     private Double longitude;
-    private boolean isDefault;
+    // Renamed from isDefault to defaultAddress to avoid Lombok JSON serialization issues
+    private boolean defaultAddress;
 }

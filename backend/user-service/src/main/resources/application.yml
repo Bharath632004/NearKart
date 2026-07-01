@@ -29,8 +29,14 @@ eureka:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:nearkart-super-secret-key-2026-must-be-256-bits-long-minimum}
+    # Must be a Base64-encoded string representing >= 256 bits (32 bytes)
+    # Generate with: openssl rand -base64 32
+    secret: ${JWT_SECRET:bmVhcmthcnQtc3VwZXItc2VjcmV0LWtleS0yMDI2LW11c3QtYmUtMjU2LWJpdHM=}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  internal:
+    # Shared secret for internal service-to-service calls (e.g., auth-service -> user-service)
+    # Override in production via INTERNAL_SECRET env variable
+    secret: ${INTERNAL_SECRET:nearkart-internal-secret-2026}
 
 management:
   endpoints:

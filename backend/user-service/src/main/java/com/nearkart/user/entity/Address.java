@@ -39,6 +39,9 @@ public class Address {
     private Double latitude;
     private Double longitude;
 
-    @Column(nullable = false)
-    private boolean isDefault = false;
+    // Renamed from 'isDefault' to avoid Lombok/JPA boolean getter conflict.
+    // Lombok on 'isDefault' generates isDefault() which confuses JPA column mapping.
+    @Column(name = "is_default", nullable = false)
+    @Builder.Default
+    private boolean defaultAddress = false;
 }

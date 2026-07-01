@@ -28,5 +28,6 @@ public class AddressRequest {
     private Double latitude;
     private Double longitude;
 
-    private boolean isDefault = false;
+    // Renamed from isDefault to defaultAddress to match entity field rename
+    private boolean defaultAddress = false;
 }

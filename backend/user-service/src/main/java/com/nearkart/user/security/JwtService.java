@@ -1,19 +1,20 @@
 package com.nearkart.user.security;
 
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
-import io.jsonwebtoken.security.Keys;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class JwtService {
 
-    @Value("${jwt.secret}")
+    @Value("${app.jwt.secret}")
     private String jwtSecret;
 
     public UUID extractUserId(String token) {
@@ -39,6 +40,8 @@ public class JwtService {
     }
 
     private SecretKey getKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        // Use Base64 decoding to safely support secrets of any length >= 256 bits.
+        // Raw .getBytes() risks WeakKeyException if the secret string is too short.
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
     }
 }

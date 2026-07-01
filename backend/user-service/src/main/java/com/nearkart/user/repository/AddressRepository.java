@@ -13,7 +13,8 @@ import java.util.UUID;
 public interface AddressRepository extends JpaRepository<Address, UUID> {
     List<Address> findByUserProfileUserId(UUID userId);
 
+    // Updated JPQL field name from isDefault -> defaultAddress to match renamed entity field
     @Modifying
-    @Query("UPDATE Address a SET a.isDefault = false WHERE a.userProfile.userId = :userId")
+    @Query("UPDATE Address a SET a.defaultAddress = false WHERE a.userProfile.userId = :userId")
     void clearDefaultForUser(UUID userId);
 }

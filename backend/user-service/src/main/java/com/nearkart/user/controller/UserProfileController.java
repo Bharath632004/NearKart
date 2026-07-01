@@ -7,10 +7,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +25,9 @@ import java.util.UUID;
 public class UserProfileController {
 
     private final UserProfileService profileService;
+
+    @Value("${app.internal.secret}")
+    private String internalSecret;
 
     @GetMapping("/me")
     @Operation(summary = "Get current user profile")
@@ -67,14 +72,21 @@ public class UserProfileController {
         return ResponseEntity.noContent().build();
     }
 
-    // Internal endpoint called by auth-service after registration
+    /**
+     * Internal endpoint called by auth-service after registration.
+     * Protected by X-Internal-Secret header — must match app.internal.secret config value.
+     */
     @PostMapping("/internal/create")
     @Operation(summary = "Internal: Create profile after registration")
     public ResponseEntity<UserProfileResponse> createProfile(
+            @RequestHeader("X-Internal-Secret") String secret,
             @RequestParam UUID userId,
             @RequestParam String email,
             @RequestParam String fullName,
             @RequestParam(required = false) String phone) {
+        if (!internalSecret.equals(secret)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid internal secret");
+        }
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(profileService.createProfile(userId, email, fullName, phone));
     }
