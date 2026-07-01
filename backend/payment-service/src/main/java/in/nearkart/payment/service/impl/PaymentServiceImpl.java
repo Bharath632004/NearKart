@@ -4,6 +4,8 @@ import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import com.razorpay.Utils;
+import in.nearkart.payment.client.OrderServiceClient;
+import in.nearkart.payment.client.dto.OrderSummaryResponse;
 import in.nearkart.payment.config.RazorpayConfig;
 import in.nearkart.payment.dto.request.CreatePaymentOrderRequest;
 import in.nearkart.payment.dto.request.VerifyPaymentRequest;
@@ -37,10 +39,11 @@ import java.util.UUID;
 @Transactional
 public class PaymentServiceImpl implements PaymentService {
 
-    private final RazorpayClient razorpayClient;
-    private final RazorpayConfig razorpayConfig;
-    private final PaymentRepository paymentRepository;
-    private final PaymentEventProducer eventProducer;
+    private final RazorpayClient        razorpayClient;
+    private final RazorpayConfig        razorpayConfig;
+    private final PaymentRepository     paymentRepository;
+    private final PaymentEventProducer  eventProducer;
+    private final OrderServiceClient    orderServiceClient;
 
     // ----------------------------------------------------------------
     // STEP 1 – Create Razorpay Order (Frontend calls this first)
@@ -48,15 +51,28 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public PaymentOrderResponse createRazorpayOrder(UUID customerId, CreatePaymentOrderRequest request) {
 
-        // TODO: Feign call to order-service to get order amount
-        BigDecimal amount = new BigDecimal("235.00"); // Replace with Feign
+        // Fetch real order total from order-service via Feign
+        OrderSummaryResponse orderSummary;
+        try {
+            orderSummary = orderServiceClient.getOrderSummary(request.getOrderId());
+        } catch (Exception e) {
+            log.error("Failed to fetch order summary for orderId={}: {}", request.getOrderId(), e.getMessage());
+            throw new PaymentException("Could not retrieve order details. Please try again.");
+        }
+
+        BigDecimal amount = orderSummary.getTotalAmount();
+        String     currency = orderSummary.getCurrency() != null ? orderSummary.getCurrency() : "INR";
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new PaymentException("Invalid order amount received from order-service: " + amount);
+        }
 
         // Razorpay expects amount in paise (1 INR = 100 paise)
         int amountInPaise = amount.multiply(BigDecimal.valueOf(100)).intValue();
 
         JSONObject orderOptions = new JSONObject();
         orderOptions.put("amount",   amountInPaise);
-        orderOptions.put("currency", "INR");
+        orderOptions.put("currency", currency);
         orderOptions.put("receipt",  "NK-" + request.getOrderId());
 
         try {
@@ -74,13 +90,14 @@ public class PaymentServiceImpl implements PaymentService {
                     .build();
 
             Payment saved = paymentRepository.save(payment);
-            log.info("Razorpay order created: rzpOrderId={}, orderId={}", rzpOrderId, request.getOrderId());
+            log.info("Razorpay order created: rzpOrderId={}, orderId={}, amount={} {}",
+                    rzpOrderId, request.getOrderId(), amount, currency);
 
             return PaymentOrderResponse.builder()
                     .paymentId(saved.getId())
                     .razorpayOrderId(rzpOrderId)
                     .amount(amount)
-                    .currency("INR")
+                    .currency(currency)
                     .keyId(razorpayConfig.getKeyId())
                     .receipt("NK-" + request.getOrderId())
                     .build();
