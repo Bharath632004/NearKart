@@ -49,7 +49,7 @@ function PrivateRoute({ children, role }) {
   return children;
 }
 
-// fix: listen for 401 logout event from axiosInstance to sync Redux state
+// Listens for 401 logout event from axiosInstance to sync Redux state
 function AuthSyncListener() {
   const dispatch = useDispatch();
   useEffect(() => {
@@ -58,6 +58,17 @@ function AuthSyncListener() {
     return () => window.removeEventListener('nearkart:logout', handler);
   }, [dispatch]);
   return null;
+}
+
+// 404 page
+function NotFound() {
+  return (
+    <div style={{ textAlign: 'center', padding: '80px 24px' }}>
+      <h1 style={{ fontSize: 64, color: '#e94560' }}>404</h1>
+      <p style={{ fontSize: 20, color: '#555' }}>Page not found.</p>
+      <a href="/" style={{ color: '#3b82f6' }}>Go Home</a>
+    </div>
+  );
 }
 
 export default function App() {
@@ -98,8 +109,8 @@ export default function App() {
           <Route path="/admin/delivery" element={<PrivateRoute role="ADMIN"><ManageDelivery /></PrivateRoute>} />
           <Route path="/admin/reports" element={<PrivateRoute role="ADMIN"><AdminReports /></PrivateRoute>} />
 
-          {/* Catch-all 404 redirect */}
-          <Route path="*" element={<Navigate to="/" />} />
+          {/* 404 */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </Provider>
