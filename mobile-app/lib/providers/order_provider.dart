@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/order_model.dart';
+import '../services/api_service.dart';
 
 class OrderProvider extends ChangeNotifier {
   List<Order> _orders = [];
@@ -13,11 +14,14 @@ class OrderProvider extends ChangeNotifier {
   Future<void> fetchOrders(String userId) async {
     _isLoading = true;
     notifyListeners();
-    // TODO: Fetch from backend API
-    await Future.delayed(const Duration(seconds: 1));
-    _orders = []; // Replace with parsed API response
-    _isLoading = false;
-    notifyListeners();
+    try {
+      _orders = await ApiService.getMyOrders(userId);
+    } catch (e) {
+      _orders = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<String?> placeOrder({
@@ -29,11 +33,21 @@ class OrderProvider extends ChangeNotifier {
   }) async {
     _isLoading = true;
     notifyListeners();
-    // TODO: POST to backend API
-    await Future.delayed(const Duration(seconds: 1));
-    _isLoading = false;
-    notifyListeners();
-    return 'ORDER_${DateTime.now().millisecondsSinceEpoch}';
+    try {
+      final res = await ApiService.placeOrder({
+        'shopId': shopId,
+        'userId': userId,
+        'items': items,
+        'totalAmount': totalAmount,
+        'deliveryAddress': deliveryAddress,
+      });
+      return res['id']?.toString() ?? res['orderId']?.toString();
+    } catch (e) {
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   void setActiveOrder(Order order) {

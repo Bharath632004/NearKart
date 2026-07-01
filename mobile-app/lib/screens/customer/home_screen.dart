@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../services/location_service.dart';
+import '../../services/api_service.dart';
 import '../../models/shop_model.dart';
 import 'cart_screen.dart';
 import 'product_list_screen.dart';
@@ -17,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _locationText = 'Detecting location...';
   List<Shop> _shops = [];
   bool _loading = true;
+  String? _error;
   final _searchController = TextEditingController();
 
   @override
@@ -25,21 +27,40 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadLocation();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadLocation() async {
+    setState(() { _loading = true; _error = null; });
     final pos = await LocationService.getCurrentPosition();
     if (pos != null) {
       setState(() {
         _locationText = '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
-        // TODO: Replace with real API call using pos.latitude, pos.longitude
-        _shops = [
-          Shop(id: '1', name: 'Fresh Mart', address: '12 Main St', latitude: pos.latitude, longitude: pos.longitude, distanceKm: 0.3, rating: 4.5),
-          Shop(id: '2', name: 'Daily Needs', address: '45 Cross Rd', latitude: pos.latitude, longitude: pos.longitude, distanceKm: 0.7, rating: 4.2),
-          Shop(id: '3', name: 'Quick Store', address: '8 Park Ave', latitude: pos.latitude, longitude: pos.longitude, distanceKm: 1.1, rating: 4.0),
-        ];
-        _loading = false;
       });
+      try {
+        final shops = await ApiService.getNearbyShops(
+          lat: pos.latitude,
+          lng: pos.longitude,
+        );
+        setState(() {
+          _shops = shops;
+          _loading = false;
+        });
+      } catch (e) {
+        setState(() {
+          _error = 'Could not load shops. Please try again.';
+          _loading = false;
+        });
+      }
     } else {
-      setState(() { _locationText = 'Unable to detect location'; _loading = false; });
+      setState(() {
+        _locationText = 'Unable to detect location';
+        _loading = false;
+        _error = 'Location permission required to find nearby shops.';
+      });
     }
   }
 
@@ -62,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: CircleAvatar(
                     radius: 9,
                     backgroundColor: Colors.red,
-                    child: Text('$cartCount', style: const TextStyle(fontSize: 11, color: Colors.white)),
+                    child: Text('\$cartCount', style: const TextStyle(fontSize: 11, color: Colors.white)),
                   ),
                 ),
             ],
@@ -92,10 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(12),
             child: TextField(
               controller: _searchController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Search products or shops...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: const Icon(Icons.mic),
+                prefixIcon: Icon(Icons.search),
+                suffixIcon: Icon(Icons.mic),
               ),
             ),
           ),
@@ -107,44 +128,69 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          _loading
-              ? const Expanded(child: Center(child: CircularProgressIndicator()))
-              : Expanded(
-                  child: ListView.builder(
-                    itemCount: _shops.length,
-                    itemBuilder: (context, i) {
-                      final shop = _shops[i];
-                      return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Colors.green.shade100,
-                            child: const Icon(Icons.store, color: Colors.green),
-                          ),
-                          title: Text(shop.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('${shop.distanceKm.toStringAsFixed(1)} km away • ${shop.address}'),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Row(mainAxisSize: MainAxisSize.min, children: [
-                                const Icon(Icons.star, size: 14, color: Colors.amber),
-                                Text('${shop.rating}', style: const TextStyle(fontSize: 12)),
-                              ]),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(color: shop.isOpen ? Colors.green : Colors.red, borderRadius: BorderRadius.circular(8)),
-                                child: Text(shop.isOpen ? 'Open' : 'Closed', style: const TextStyle(color: Colors.white, fontSize: 10)),
-                              ),
-                            ],
-                          ),
-                          onTap: () => Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => ProductListScreen(shop: shop),
-                          )),
-                        ),
-                      );
-                    },
+          if (_loading)
+            const Expanded(child: Center(child: CircularProgressIndicator()))
+          else if (_error != null)
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 60, color: Colors.grey),
+                      const SizedBox(height: 12),
+                      Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 16),
+                      ElevatedButton(onPressed: _loadLocation, child: const Text('Retry')),
+                    ],
                   ),
                 ),
+              ),
+            )
+          else if (_shops.isEmpty)
+            const Expanded(
+              child: Center(
+                child: Text('No shops found nearby', style: TextStyle(color: Colors.grey, fontSize: 16)),
+              ),
+            )
+          else
+            Expanded(
+              child: ListView.builder(
+                itemCount: _shops.length,
+                itemBuilder: (context, i) {
+                  final shop = _shops[i];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.green.shade100,
+                        child: const Icon(Icons.store, color: Colors.green),
+                      ),
+                      title: Text(shop.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${shop.distanceKm.toStringAsFixed(1)} km away • ${shop.address}'),
+                      trailing: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.star, size: 14, color: Colors.amber),
+                            Text('${shop.rating}', style: const TextStyle(fontSize: 12)),
+                          ]),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: shop.isOpen ? Colors.green : Colors.red, borderRadius: BorderRadius.circular(8)),
+                            child: Text(shop.isOpen ? 'Open' : 'Closed', style: const TextStyle(color: Colors.white, fontSize: 10)),
+                          ),
+                        ],
+                      ),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => ProductListScreen(shop: shop),
+                      )),
+                    ),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
