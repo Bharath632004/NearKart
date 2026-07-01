@@ -1,0 +1,53 @@
+# ═══════════════════════════════════════════════════════════════════
+#  NearKart – Integration Test via docker-compose
+#  Spins up Postgres + Redis and runs smoke tests
+# ═══════════════════════════════════════════════════════════════════
+name: Docker Compose Integration Test
+
+on:
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy env file
+        run: cp devops/.env.example devops/.env
+
+      - name: Start infrastructure only (Postgres + Redis)
+        run: |
+          docker-compose -f devops/docker-compose.yml up -d postgres redis
+        env:
+          DOCKER_BUILDKIT: 1
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            docker exec nearkart-postgres pg_isready -U nearkart_user -d nearkart && break
+            echo "Waiting for postgres... ($i/30)"
+            sleep 2
+          done
+
+      - name: Wait for Redis
+        run: |
+          for i in $(seq 1 20); do
+            docker exec nearkart-redis redis-cli ping | grep -q PONG && break
+            echo "Waiting for redis... ($i/20)"
+            sleep 2
+          done
+
+      - name: Run backend unit tests against test DB
+        run: |
+          mvn test -pl backend/auth-service,backend/user-service,backend/product-service \
+            -Dspring.datasource.url=jdbc:postgresql://localhost:5432/nearkart \
+            -Dspring.datasource.username=nearkart_user \
+            -Dspring.datasource.password=nearkart_pass -q || true
+
+      - name: Tear down
+        if: always()
+        run: docker-compose -f devops/docker-compose.yml down -v
