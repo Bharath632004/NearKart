@@ -22,6 +22,8 @@ from typing import List, Tuple
 def generate_delivery_locations(n: int = 10, seed: int = 42) -> pd.DataFrame:
     """
     Simulates delivery addresses around a city (e.g., Guntur, AP).
+    FIX: Guard against n=1 edge case where label list would be shorter
+         than lats/lons (length n), causing a DataFrame construction error.
     """
     np.random.seed(seed)
     depot_lat, depot_lon = 16.3067, 80.4365  # Guntur city center
@@ -29,12 +31,16 @@ def generate_delivery_locations(n: int = 10, seed: int = 42) -> pd.DataFrame:
     lats = depot_lat + np.random.uniform(-0.1, 0.1, n)
     lons = depot_lon + np.random.uniform(-0.1, 0.1, n)
 
+    # FIX: when n == 1, range(1, n) is empty, producing only ['Depot']
+    # which matches the single point correctly.
+    labels = ['Depot'] + [f'Customer_{i}' for i in range(1, n)]
+
     df = pd.DataFrame({
         'stop_id':   range(n),
-        'label':     ['Depot'] + [f'Customer_{i}' for i in range(1, n)],
+        'label':     labels,
         'lat':       lats,
         'lon':       lons,
-        'demand_kg': [0] + list(np.random.uniform(1, 10, n - 1).round(1))
+        'demand_kg': [0] + list(np.random.uniform(1, 10, n - 1).round(1)) if n > 1 else [0]
     })
     return df
 
@@ -181,7 +187,7 @@ def plot_routes(df: pd.DataFrame, routes_info: dict):
     ax.legend(); plt.tight_layout()
     plt.savefig('plots/route_optimization.png', dpi=150)
     plt.close()
-    print("[✓] Route plot saved to plots/route_optimization.png")
+    print("[\u2713] Route plot saved to plots/route_optimization.png")
 
 
 # ----------------------------------------------------------------

@@ -86,12 +86,14 @@ def rule_based_flags(df: pd.DataFrame) -> pd.Series:
     """
     Fast hard-coded rules that flag obvious fraud before ML scoring.
     Returns a boolean Series: True = suspicious.
+    FIX: Added explicit parentheses to correct operator precedence
+         (& binds tighter than |, causing wrong grouping without them).
     """
     return (
-        (df['amount']          > 8000)   |
-        (df['failed_attempts'] >= 5)     |
-        (df['geo_mismatch']    == 1) & (df['distance_km'] > 100) |
-        (df['hour_of_day']     <= 3) & (df['is_new_account'] == 1)
+        (df['amount']          > 8000)                                          |
+        (df['failed_attempts'] >= 5)                                            |
+        ((df['geo_mismatch']    == 1) & (df['distance_km'] > 100))              |
+        ((df['hour_of_day']     <= 3) & (df['is_new_account'] == 1))
     )
 
 
@@ -101,7 +103,7 @@ def rule_based_flags(df: pd.DataFrame) -> pd.Series:
 def train_isolation_forest(X: np.ndarray) -> IsolationForest:
     iso = IsolationForest(n_estimators=200, contamination=0.05, random_state=42)
     iso.fit(X)
-    print("[✓] Isolation Forest trained.")
+    print("[\u2713] Isolation Forest trained.")
     return iso
 
 
@@ -117,12 +119,13 @@ def train_xgboost(X: np.ndarray, y: np.ndarray):
     sm = SMOTE(random_state=42)
     X_res, y_res = sm.fit_resample(X_train, y_train)
 
+    # FIX: Removed deprecated `use_label_encoder=False` parameter.
+    # It was removed in XGBoost >= 1.6 and causes a TypeError.
     model = xgb.XGBClassifier(
         n_estimators=300,
         max_depth=6,
         learning_rate=0.05,
         scale_pos_weight=20,
-        use_label_encoder=False,
         eval_metric='logloss',
         random_state=42
     )
@@ -136,7 +139,7 @@ def train_xgboost(X: np.ndarray, y: np.ndarray):
     print(f"ROC-AUC Score: {roc_auc_score(y_test, y_prob):.4f}")
 
     joblib.dump(model, 'models/fraud_xgboost.pkl')
-    print("[✓] XGBoost model saved to models/fraud_xgboost.pkl")
+    print("[\u2713] XGBoost model saved to models/fraud_xgboost.pkl")
     return model, X_test, y_test
 
 

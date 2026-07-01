@@ -91,7 +91,9 @@ def forecast_inventory(df: pd.DataFrame, forecast_days: int = 14) -> pd.DataFram
     os.makedirs('models', exist_ok=True)
 
     for pid, group in df.groupby('product_id'):
-        series      = group.set_index('date')['units_sold'].asfreq('D').fillna(method='ffill')
+        # FIX: Replace deprecated fillna(method='ffill') with .ffill()
+        # fillna(method=...) was deprecated in pandas 2.0 and raises TypeError.
+        series      = group.set_index('date')['units_sold'].asfreq('D').ffill()
         lead_time   = group['lead_time_days'].mean()
         avg_demand  = series.mean()
         std_demand  = series.std()
@@ -146,4 +148,4 @@ if __name__ == '__main__':
     print("=== NearKart Inventory Forecasting ===")
     df = generate_inventory_data(n_products=5, n_days=180)
     forecast_inventory(df, forecast_days=14)
-    print("[✓] Done. Check plots/ folder and inventory_forecast_results.csv")
+    print("[\u2713] Done. Check plots/ folder and inventory_forecast_results.csv")

@@ -34,7 +34,7 @@ def generate_data(n_users=200, n_products=100, n_ratings=3000):
     # Product catalog
     categories  = ['Groceries', 'Dairy', 'Snacks', 'Beverages', 'Personal Care',
                    'Household', 'Bakery', 'Frozen', 'Organic', 'Baby']
-    brands      = ['Amul', 'Nestlé', 'Parle', 'Britannia', 'ITC', 'HUL', 'P&G', 'Dabur']
+    brands      = ['Amul', 'Nestl\u00e9', 'Parle', 'Britannia', 'ITC', 'HUL', 'P&G', 'Dabur']
 
     products_df = pd.DataFrame({
         'product_id': range(1, n_products + 1),
@@ -69,7 +69,7 @@ def train_collaborative(ratings_df: pd.DataFrame):
     os.makedirs('models', exist_ok=True)
     joblib.dump(model, 'models/svd_model.pkl')
     joblib.dump(trainset, 'models/trainset.pkl')
-    print("[✓] SVD model saved.")
+    print("[\u2713] SVD model saved.")
     return model, trainset
 
 
@@ -83,7 +83,7 @@ def build_content_model(products_df: pd.DataFrame):
 
     joblib.dump(cosine_sim, 'models/cosine_sim.pkl')
     products_df.to_csv('models/products.csv', index=False)
-    print("[✓] Content-based model built and saved.")
+    print("[\u2713] Content-based model built and saved.")
     return cosine_sim
 
 
@@ -142,10 +142,15 @@ def hybrid_recommendations(user_id: int, product_id: int,
     all_pids  = products_df['product_id'].tolist()
     cf_scores = {pid: model.predict(user_id, pid).est for pid in all_pids}
 
-    # Content scores for reference product
+    # FIX: Use enumerate(iterrows()) to safely map cosine_sim matrix positions
+    # to product_ids. The previous range(len()) approach would cause an
+    # IndexError if products_df had a non-contiguous index (e.g. after
+    # drop_duplicates or filtering).
     ref_idx   = products_df.index[products_df['product_id'] == product_id][0]
-    cb_scores = {products_df.iloc[i]['product_id']: cosine_sim[ref_idx][i]
-                 for i in range(len(products_df))}
+    cb_scores = {
+        row['product_id']: cosine_sim[ref_idx][pos]
+        for pos, (_, row) in enumerate(products_df.iterrows())
+    }
 
     # Normalize and blend
     cf_vals   = np.array([cf_scores[p] for p in all_pids])
