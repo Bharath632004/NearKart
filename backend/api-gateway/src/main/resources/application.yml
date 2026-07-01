@@ -27,19 +27,20 @@ spring:
             fallbackUri: forward:/fallback
 
       routes:
-        # ─── Auth / User Service ───────────────────────────────────────────────
-        - id: user-service-public
-          uri: lb://user-service
+        # ─── Auth Service (public) ────────────────────────────────────────────
+        - id: auth-service-public
+          uri: lb://auth-service
           predicates:
-            - Path=/api/auth/**
+            - Path=/api/v1/auth/**
           filters:
             - StripPrefix=0
             - name: AddRequestHeader
               args:
                 name: X-Service-Name
-                value: user-service
+                value: auth-service
 
-        - id: user-service-private
+        # ─── User Service (public profile) ───────────────────────────────────
+        - id: user-service-public
           uri: lb://user-service
           predicates:
             - Path=/api/users/**
@@ -51,7 +52,20 @@ spring:
                 name: X-Service-Name
                 value: user-service
 
-        # ─── Product Service ───────────────────────────────────────────────────
+        # ─── User Service v1 (profile + addresses) ────────────────────────────
+        - id: user-service-v1
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: user-service
+
+        # ─── Product Service ──────────────────────────────────────────────────
         - id: product-service
           uri: lb://product-service
           predicates:
@@ -64,7 +78,7 @@ spring:
                 name: X-Service-Name
                 value: product-service
 
-        # ─── Order Service ─────────────────────────────────────────────────────
+        # ─── Order Service ────────────────────────────────────────────────────
         - id: order-service
           uri: lb://order-service
           predicates:
@@ -77,7 +91,20 @@ spring:
                 name: X-Service-Name
                 value: order-service
 
-        # ─── Shop Service ──────────────────────────────────────────────────────
+        # ─── Cart (part of order-service) ─────────────────────────────────────
+        - id: cart-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/cart/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: order-service
+
+        # ─── Shop Service ─────────────────────────────────────────────────────
         - id: shop-service
           uri: lb://shop-service
           predicates:
@@ -89,6 +116,207 @@ spring:
               args:
                 name: X-Service-Name
                 value: shop-service
+
+        # ─── Merchant Service ─────────────────────────────────────────────────
+        - id: merchant-service
+          uri: lb://merchant-service
+          predicates:
+            - Path=/api/v1/merchants/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: merchant-service
+
+        # ─── Merchant Settlements ─────────────────────────────────────────────
+        - id: settlement-service
+          uri: lb://merchant-service
+          predicates:
+            - Path=/api/v1/settlements/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: merchant-service
+
+        # ─── Payment Service ──────────────────────────────────────────────────
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/v1/payments/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: payment-service
+
+        # ─── Refund Service (part of payment-service) ─────────────────────────
+        - id: refund-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/v1/refunds/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: payment-service
+
+        # ─── Wallet (part of payment-service) ────────────────────────────────
+        - id: wallet-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/v1/wallet/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: payment-service
+
+        # ─── Delivery Service ─────────────────────────────────────────────────
+        - id: delivery-tracking
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/v1/delivery/tracking/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: delivery-service
+
+        - id: delivery-assignments
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/v1/delivery/assignments/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: delivery-service
+
+        - id: delivery-partners
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/v1/delivery/partners/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: delivery-service
+
+        - id: delivery-earnings
+          uri: lb://delivery-service
+          predicates:
+            - Path=/api/v1/delivery/earnings/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: delivery-service
+
+        # ─── Notification Service ─────────────────────────────────────────────
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: notification-service
+
+        # ─── Analytics Service ────────────────────────────────────────────────
+        - id: analytics-sales
+          uri: lb://analytics-service
+          predicates:
+            - Path=/api/analytics/sales/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: analytics-service
+
+        - id: analytics-customers
+          uri: lb://analytics-service
+          predicates:
+            - Path=/api/analytics/customers/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: analytics-service
+
+        - id: analytics-merchants
+          uri: lb://analytics-service
+          predicates:
+            - Path=/api/analytics/merchants/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: analytics-service
+
+        - id: analytics-delivery
+          uri: lb://analytics-service
+          predicates:
+            - Path=/api/analytics/delivery/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: analytics-service
+
+        - id: analytics-dashboard
+          uri: lb://analytics-service
+          predicates:
+            - Path=/api/analytics/dashboard/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: analytics-service
+
+        # ─── Admin Service ────────────────────────────────────────────────────
+        - id: admin-service
+          uri: lb://admin-service
+          predicates:
+            - Path=/api/admin/**
+          filters:
+            - StripPrefix=0
+            - JwtAuthFilter
+            - name: AddRequestHeader
+              args:
+                name: X-Service-Name
+                value: admin-service
 
       # Global CORS
       globalcors:
