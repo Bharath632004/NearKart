@@ -1,17 +1,1 @@
-package com.nearkart.orderservice.dto;
-
-import lombok.*;
-
-import java.math.BigDecimal;
-
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class OrderItemResponse {
-    private Long productId;
-    private String productName;
-    private int quantity;
-    private BigDecimal unitPrice;
-    private BigDecimal totalPrice;
-}
+// DELETED - legacy package replaced by in.nearkart.order
