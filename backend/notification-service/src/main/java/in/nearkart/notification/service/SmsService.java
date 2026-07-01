@@ -62,6 +62,17 @@ public class SmsService {
         }
     }
 
+    /**
+     * Convenience overload used by NotificationServiceImpl.
+     * Wraps the two-arg call into a SmsRequest.
+     */
+    public NotificationResponse sendSms(String toPhone, String messageBody) {
+        SmsRequest req = new SmsRequest();
+        req.setTo(toPhone);
+        req.setMessage(messageBody);
+        return sendSms(req);
+    }
+
     private NotificationType resolveType(String type) {
         if (type == null) return NotificationType.GENERAL;
         try { return NotificationType.valueOf(type.toUpperCase()); }

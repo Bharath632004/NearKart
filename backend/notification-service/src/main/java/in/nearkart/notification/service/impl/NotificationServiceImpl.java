@@ -40,20 +40,20 @@ public class NotificationServiceImpl implements NotificationService {
                 req.getType(), req.getTemplateArgs());
 
         // Persist notification record
-        Notification notification = Notification.builder()
-                .userId(req.getUserId())
-                .type(req.getType())
-                .channel(req.getChannel())
-                .title(tpl.getTitle())
-                .body(tpl.getBody())
-                .referenceId(req.getReferenceId())
-                .referenceType(req.getReferenceType())
-                .deliveryStatus(DeliveryStatus.PENDING)
-                .build();
+        in.nearkart.notification.entity.Notification notification =
+                in.nearkart.notification.entity.Notification.builder()
+                        .userId(req.getUserId())
+                        .type(req.getType())
+                        .channel(req.getChannel())
+                        .title(tpl.getTitle())
+                        .body(tpl.getBody())
+                        .referenceId(req.getReferenceId())
+                        .referenceType(req.getReferenceType())
+                        .deliveryStatus(DeliveryStatus.PENDING)
+                        .build();
 
-        Notification saved = notificationRepository.save(notification);
+        in.nearkart.notification.entity.Notification saved = notificationRepository.save(notification);
 
-        // Dispatch based on channel
         try {
             switch (req.getChannel()) {
                 case PUSH  -> fcmService.sendToUser(
@@ -105,14 +105,14 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void registerDeviceToken(UUID userId, DeviceTokenRequest request) {
-        // Upsert: deactivate old same-token entries first
+        // Soft-deactivate old entries for same token
         deviceTokenRepository.deactivateByToken(request.getToken());
 
         DeviceToken deviceToken = DeviceToken.builder()
-                .userId(userId)
-                .token(request.getToken())
+                .userId(userId.toString())   // DeviceToken.userId is String
+                .fcmToken(request.getToken())
                 .platform(request.getPlatform())
-                .isActive(true)
+                .active(true)
                 .build();
 
         deviceTokenRepository.save(deviceToken);
@@ -124,7 +124,7 @@ public class NotificationServiceImpl implements NotificationService {
         deviceTokenRepository.deactivateByToken(token);
     }
 
-    private NotificationResponse toResponse(Notification n) {
+    private NotificationResponse toResponse(in.nearkart.notification.entity.Notification n) {
         return NotificationResponse.builder()
                 .id(n.getId()).userId(n.getUserId())
                 .type(n.getType()).channel(n.getChannel())

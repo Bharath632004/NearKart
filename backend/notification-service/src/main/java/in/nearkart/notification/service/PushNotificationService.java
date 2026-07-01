@@ -3,7 +3,10 @@ package in.nearkart.notification.service;
 import com.google.firebase.messaging.*;
 import in.nearkart.notification.dto.NotificationResponse;
 import in.nearkart.notification.dto.PushRequest;
-import in.nearkart.notification.entity.*;
+import in.nearkart.notification.entity.NotificationChannel;
+import in.nearkart.notification.entity.NotificationLog;
+import in.nearkart.notification.entity.NotificationStatus;
+import in.nearkart.notification.entity.NotificationType;
 import in.nearkart.notification.repository.DeviceTokenRepository;
 import in.nearkart.notification.repository.NotificationLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,16 +42,18 @@ public class PushNotificationService {
             return NotificationResponse.builder().success(false).message("No device tokens found").build();
         }
 
-        Notification notification = Notification.builder()
-                .setTitle(request.getTitle())
-                .setBody(request.getBody())
-                .setImage(request.getImageUrl())
-                .build();
+        // Use fully-qualified FCM Notification to avoid clash with entity Notification
+        com.google.firebase.messaging.Notification fcmNotification =
+                com.google.firebase.messaging.Notification.builder()
+                        .setTitle(request.getTitle())
+                        .setBody(request.getBody())
+                        .setImage(request.getImageUrl())
+                        .build();
 
         List<Message> messages = tokens.stream().map(token -> {
             Message.Builder mb = Message.builder()
                     .setToken(token)
-                    .setNotification(notification);
+                    .setNotification(fcmNotification);
             if (request.getData() != null) mb.putAllData(request.getData());
             return mb.build();
         }).toList();
@@ -57,7 +62,6 @@ public class PushNotificationService {
             BatchResponse response = firebaseMessaging.sendEach(messages);
             log.info("FCM batch: {}/{} success", response.getSuccessCount(), messages.size());
 
-            // deactivate invalid tokens
             for (int i = 0; i < response.getResponses().size(); i++) {
                 SendResponse sr = response.getResponses().get(i);
                 if (!sr.isSuccessful()) {

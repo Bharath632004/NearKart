@@ -4,7 +4,6 @@ import in.nearkart.notification.dto.EmailRequest;
 import in.nearkart.notification.dto.NotificationResponse;
 import in.nearkart.notification.entity.*;
 import in.nearkart.notification.repository.NotificationLogRepository;
-import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,6 +77,17 @@ public class EmailService {
             logRepository.save(logEntry);
             return NotificationResponse.builder().success(false).message(e.getMessage()).logId(logEntry.getId()).build();
         }
+    }
+
+    /**
+     * Convenience overload used by NotificationServiceImpl.
+     */
+    public NotificationResponse sendPlainEmail(String toEmail, String subject, String body) {
+        EmailRequest req = new EmailRequest();
+        req.setTo(toEmail);
+        req.setSubject(subject);
+        req.setBody(body);
+        return sendEmail(req);
     }
 
     private NotificationType resolveType(String type) {
