@@ -1,0 +1,3 @@
+backend/.env
+*/target/
+mobile-app/android/.gradle/
