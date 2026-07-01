@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
+/// Roles the user can select on the login screen
+enum UserRole { customer, delivery }
+
 class AuthProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
   String? _userId;
@@ -9,15 +12,25 @@ class AuthProvider extends ChangeNotifier {
   String? _userName;
   String? _userRole; // CUSTOMER | DELIVERY | MERCHANT
   bool _isLoading = false;
+  UserRole _role = UserRole.customer;
 
   bool get isAuthenticated => _isAuthenticated;
+  bool get isLoggedIn => _isAuthenticated; // alias used by SplashScreen
   String? get userId => _userId;
   String? get userPhone => _userPhone;
+  String? get phone => _userPhone; // alias used by OtpScreen
   String? get userName => _userName;
   String? get userRole => _userRole;
   bool get isLoading => _isLoading;
   bool get isDelivery => _userRole == 'DELIVERY';
   bool get isCustomer => _userRole == 'CUSTOMER';
+  UserRole get role => _role; // enum role used by OtpScreen
+
+  /// Called from LoginScreen to persist the chosen role before sending OTP
+  void setRole(UserRole role) {
+    _role = role;
+    notifyListeners();
+  }
 
   Future<void> initAuth() async {
     final prefs = await SharedPreferences.getInstance();
@@ -28,11 +41,13 @@ class AuthProvider extends ChangeNotifier {
       _userPhone = prefs.getString('user_phone');
       _userName = prefs.getString('user_name');
       _userRole = prefs.getString('user_role') ?? 'CUSTOMER';
+      _role = _userRole == 'DELIVERY' ? UserRole.delivery : UserRole.customer;
       notifyListeners();
     }
   }
 
   Future<void> sendOtp(String phone) async {
+    _userPhone = phone; // store so OtpScreen can read auth.phone
     _isLoading = true;
     notifyListeners();
     try {
@@ -41,6 +56,11 @@ class AuthProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Convenience wrapper used by OtpScreen (phone already stored via sendOtp)
+  Future<bool> verifyOtp(String otp) async {
+    return verifyOtpAndLogin(_userPhone ?? '', otp);
   }
 
   Future<bool> verifyOtpAndLogin(String phone, String otp) async {
@@ -60,6 +80,7 @@ class AuthProvider extends ChangeNotifier {
       _userPhone = phone;
       _userName = user['name'] as String?;
       _userRole = user['role'] as String? ?? 'CUSTOMER';
+      _role = _userRole == 'DELIVERY' ? UserRole.delivery : UserRole.customer;
 
       await prefs.setString('user_id', _userId ?? '');
       await prefs.setString('user_phone', _userPhone ?? '');
@@ -89,6 +110,7 @@ class AuthProvider extends ChangeNotifier {
     _userPhone = null;
     _userName = null;
     _userRole = null;
+    _role = UserRole.customer;
     notifyListeners();
   }
 }
