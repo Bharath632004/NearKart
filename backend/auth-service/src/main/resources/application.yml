@@ -15,17 +15,26 @@ spring:
     properties:
       hibernate:
         format_sql: true
-  eureka:
-    client:
-      service-url:
-        defaultZone: http://localhost:8761/eureka/
 
-jwt:
-  secret: your_256bit_secret_string_here_your_256bit_xx
-  expiry-ms: 86400000
+eureka:
+  client:
+    enabled: false
+
+nearkart:
+  jwt:
+    secret: NearKartSuperSecretKey2026SecureString!!
+    access-token-expiry-ms: 900000
+    refresh-token-expiry-ms: 604800000
+  otp:
+    expiry-minutes: 5
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+
+logging:
+  level:
+    in.nearkart: DEBUG
+    org.springframework.security: INFO
