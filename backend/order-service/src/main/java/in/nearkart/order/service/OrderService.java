@@ -1,30 +1,138 @@
 package in.nearkart.order.service;
 
-import in.nearkart.order.dto.request.PlaceOrderRequest;
-import in.nearkart.order.dto.request.UpdateOrderStatusRequest;
-import in.nearkart.order.dto.response.OrderResponse;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import in.nearkart.order.dto.CreateOrderRequest;
+import in.nearkart.order.dto.OrderResponse;
+import in.nearkart.order.entity.Order;
+import in.nearkart.order.entity.OrderItem;
+import in.nearkart.order.entity.OrderStatus;
+import in.nearkart.order.exception.OrderCancellationException;
+import in.nearkart.order.exception.OrderNotFoundException;
+import in.nearkart.order.repository.OrderRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
 
-public interface OrderService {
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class OrderService {
 
-    OrderResponse placeOrder(UUID customerId, PlaceOrderRequest request);
+    private final OrderRepository orderRepository;
 
-    OrderResponse getOrderById(UUID orderId);
+    @Transactional
+    public OrderResponse placeOrder(CreateOrderRequest request) {
+        log.info("Placing order for userId={} shopId={}", request.getUserId(), request.getShopId());
 
-    OrderResponse getOrderByNumber(String orderNumber);
+        List<OrderItem> items = request.getItems().stream()
+                .map(i -> OrderItem.builder()
+                        .productId(i.getProductId())
+                        .productName(i.getProductName())
+                        .quantity(i.getQuantity())
+                        .price(i.getPrice())
+                        .build())
+                .collect(Collectors.toList());
 
-    Page<OrderResponse> getCustomerOrders(UUID customerId, Pageable pageable);
+        double total = items.stream()
+                .mapToDouble(i -> i.getPrice() * i.getQuantity())
+                .sum();
 
-    Page<OrderResponse> getMerchantOrders(UUID shopId, Pageable pageable);
+        Order order = Order.builder()
+                .userId(request.getUserId())
+                .shopId(request.getShopId())
+                .totalAmount(total)
+                .status(OrderStatus.PENDING)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
 
-    OrderResponse updateOrderStatus(UUID orderId, UpdateOrderStatusRequest request, UUID actorId);
+        items.forEach(item -> item.setOrder(order));
+        order.getItems().addAll(items);
 
-    OrderResponse cancelOrder(UUID orderId, String reason, UUID actorId);
+        Order saved = orderRepository.save(order);
+        log.info("Order placed successfully id={}", saved.getId());
+        return mapToResponse(saved);
+    }
 
-    void confirmOrderAfterPayment(UUID orderId);
+    @Transactional(readOnly = true)
+    public OrderResponse getOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        return mapToResponse(order);
+    }
 
-    void cancelOrderOnPaymentFailure(UUID orderId);
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getOrdersByUser(Long userId) {
+        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getOrdersByShop(Long shopId) {
+        return orderRepository.findByShopIdOrderByCreatedAtDesc(shopId)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public OrderResponse updateStatus(Long orderId, OrderStatus newStatus) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+        log.info("Updating order id={} status {} -> {}", orderId, order.getStatus(), newStatus);
+        order.setStatus(newStatus);
+        order.setUpdatedAt(Instant.now());
+        return mapToResponse(order);
+    }
+
+    @Transactional
+    public OrderResponse cancelOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        if (order.getStatus() == OrderStatus.DELIVERED) {
+            throw new OrderCancellationException("Cannot cancel a delivered order.");
+        }
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new OrderCancellationException("Order is already cancelled.");
+        }
+        if (order.getStatus() == OrderStatus.OUT_FOR_DELIVERY) {
+            throw new OrderCancellationException("Cannot cancel order that is out for delivery.");
+        }
+
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setUpdatedAt(Instant.now());
+        log.info("Order id={} cancelled", orderId);
+        return mapToResponse(order);
+    }
+
+    // ─── Mapper ─────────────────────────────────────────────────────────────────
+
+    private OrderResponse mapToResponse(Order order) {
+        List<OrderResponse.OrderItemResponse> itemResponses = order.getItems().stream()
+                .map(i -> OrderResponse.OrderItemResponse.builder()
+                        .productId(i.getProductId())
+                        .productName(i.getProductName())
+                        .quantity(i.getQuantity())
+                        .price(i.getPrice())
+                        .build())
+                .collect(Collectors.toList());
+
+        return OrderResponse.builder()
+                .id(order.getId())
+                .userId(order.getUserId())
+                .shopId(order.getShopId())
+                .totalAmount(order.getTotalAmount())
+                .status(order.getStatus().name())
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
+                .items(itemResponses)
+                .build();
+    }
 }
