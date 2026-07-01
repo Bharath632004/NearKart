@@ -31,9 +31,10 @@ export const useAuthStore = create<AuthStore>()(
       logout: () => set({ user: null, token: null, isLoggedIn: false }),
 
       updateProfile: (updates) =>
-        set((state) => ({
-          user: state.user ? { ...state.user, ...updates } : null,
-        })),
+        set((state) => {
+          if (!state.user) return state;
+          return { user: { ...state.user, ...updates } };
+        }),
     }),
     { name: 'nearkart-auth' }
   )

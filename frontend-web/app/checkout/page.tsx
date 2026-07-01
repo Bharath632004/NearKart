@@ -17,8 +17,9 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card'>('cod');
   const [loading, setLoading] = useState(false);
 
-  const deliveryFee = totalPrice() > 299 ? 0 : 29;
-  const grandTotal = totalPrice() + deliveryFee;
+  const total = totalPrice() ?? 0;
+  const deliveryFee = total > 299 ? 0 : 29;
+  const grandTotal = total + deliveryFee;
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -102,7 +103,7 @@ export default function CheckoutPage() {
               </div>
               <div className="border-t pt-4 flex flex-col gap-1 text-sm">
                 <div className="flex justify-between text-gray-600">
-                  <span>Subtotal</span><span>{formatCurrency(totalPrice())}</span>
+                  <span>Subtotal</span><span>{formatCurrency(total)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Delivery</span>
@@ -117,9 +118,9 @@ export default function CheckoutPage() {
               <Button type="submit" loading={loading} className="w-full mt-6" size="lg">
                 Place Order
               </Button>
-              {totalPrice() < 299 && (
+              {total < 299 && (
                 <p className="text-xs text-center text-gray-400 mt-2">
-                  Add {formatCurrency(299 - totalPrice())} more for free delivery
+                  Add {formatCurrency(299 - total)} more for free delivery
                 </p>
               )}
             </div>

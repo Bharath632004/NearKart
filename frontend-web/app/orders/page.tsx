@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -40,7 +40,7 @@ const statusVariant: Record<string, 'green' | 'orange' | 'blue'> = {
   Processing: 'blue',
 };
 
-export default function OrdersPage() {
+function OrdersContent() {
   const searchParams = useSearchParams();
   const [orders] = useState<MockOrder[]>(MOCK_ORDERS);
 
@@ -94,5 +94,13 @@ export default function OrdersPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-10 h-10 rounded-full border-4 border-green-200 border-t-green-600 animate-spin" /></div>}>
+      <OrdersContent />
+    </Suspense>
   );
 }
