@@ -69,17 +69,13 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByUser(Long userId) {
         return orderRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<OrderResponse> getOrdersByShop(Long shopId) {
         return orderRepository.findByShopIdOrderByCreatedAtDesc(shopId)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     @Transactional
@@ -96,38 +92,22 @@ public class OrderService {
     public OrderResponse cancelOrder(Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(orderId));
-
-        if (order.getStatus() == OrderStatus.DELIVERED) {
+        if (order.getStatus() == OrderStatus.DELIVERED)
             throw new OrderCancellationException("Cannot cancel a delivered order.");
-        }
-        if (order.getStatus() == OrderStatus.CANCELLED) {
+        if (order.getStatus() == OrderStatus.CANCELLED)
             throw new OrderCancellationException("Order is already cancelled.");
-        }
-        if (order.getStatus() == OrderStatus.OUT_FOR_DELIVERY) {
+        if (order.getStatus() == OrderStatus.OUT_FOR_DELIVERY)
             throw new OrderCancellationException("Cannot cancel order that is out for delivery.");
-        }
-
         order.setStatus(OrderStatus.CANCELLED);
         order.setUpdatedAt(Instant.now());
         log.info("Order id={} cancelled", orderId);
         return mapToResponse(order);
     }
 
-    // ─── Kafka payment event handlers ────────────────────────────────────────────
-
-    /**
-     * Called by PaymentEventConsumer when payment.success event is received.
-     * Looks up the order by UUID string stored in orderNumber field (or falls back
-     * to searching by id if orderId is numeric). For now we resolve UUID -> Long
-     * by treating the most-significant bits as the id (simple approach for local dev).
-     * Replace with a proper UUID primary key migration when scaling.
-     */
     @Transactional
     public void confirmOrderAfterPayment(UUID externalOrderId) {
         log.info("Confirming order after payment: externalOrderId={}", externalOrderId);
-        // For current schema (Long PK), try to find by latest PENDING order
-        // In production: store UUID as orderNumber column and query by it
-        orderRepository.findTopByStatusOrderByCreatedAtDesc(OrderStatus.PENDING)
+        orderRepository.findLatestByStatus(OrderStatus.PENDING)
                 .ifPresentOrElse(
                         order -> {
                             order.setStatus(OrderStatus.CONFIRMED);
@@ -138,13 +118,10 @@ public class OrderService {
                 );
     }
 
-    /**
-     * Called by PaymentEventConsumer when payment.failed event is received.
-     */
     @Transactional
     public void cancelOrderOnPaymentFailure(UUID externalOrderId) {
         log.info("Cancelling order due to payment failure: externalOrderId={}", externalOrderId);
-        orderRepository.findTopByStatusOrderByCreatedAtDesc(OrderStatus.PENDING)
+        orderRepository.findLatestByStatus(OrderStatus.PENDING)
                 .ifPresentOrElse(
                         order -> {
                             order.setStatus(OrderStatus.CANCELLED);
@@ -154,8 +131,6 @@ public class OrderService {
                         () -> log.warn("No PENDING order found for paymentOrderId={}", externalOrderId)
                 );
     }
-
-    // ─── Mapper ──────────────────────────────────────────────────────────────────
 
     private OrderResponse mapToResponse(Order order) {
         List<OrderResponse.OrderItemResponse> itemResponses = order.getItems().stream()
