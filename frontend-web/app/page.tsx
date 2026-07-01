@@ -1,4 +1,3 @@
-'use client';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import HeroSection from '@/components/home/HeroSection';
@@ -8,6 +7,8 @@ import HowItWorks from '@/components/home/HowItWorks';
 import PromoBanner from '@/components/home/PromoBanner';
 import TrustBadges from '@/components/home/TrustBadges';
 
+// NOTE: No 'use client' here — page.tsx must be a Server Component to allow
+// metadata export. All interactive children already have their own 'use client'.
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-gray-50">
