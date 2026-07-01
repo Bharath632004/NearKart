@@ -3,6 +3,12 @@
 # Run: uvicorn api:app --reload --port 8001
 # =============================================================
 
+import sys
+import os
+# FIX: Ensure the module directory is on sys.path so fraud_detection
+#      can be imported regardless of the working directory.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fraud_detection import predict_fraud

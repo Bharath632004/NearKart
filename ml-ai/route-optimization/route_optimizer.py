@@ -22,8 +22,6 @@ from typing import List, Tuple
 def generate_delivery_locations(n: int = 10, seed: int = 42) -> pd.DataFrame:
     """
     Simulates delivery addresses around a city (e.g., Guntur, AP).
-    FIX: Guard against n=1 edge case where label list would be shorter
-         than lats/lons (length n), causing a DataFrame construction error.
     """
     np.random.seed(seed)
     depot_lat, depot_lon = 16.3067, 80.4365  # Guntur city center
@@ -31,16 +29,12 @@ def generate_delivery_locations(n: int = 10, seed: int = 42) -> pd.DataFrame:
     lats = depot_lat + np.random.uniform(-0.1, 0.1, n)
     lons = depot_lon + np.random.uniform(-0.1, 0.1, n)
 
-    # FIX: when n == 1, range(1, n) is empty, producing only ['Depot']
-    # which matches the single point correctly.
-    labels = ['Depot'] + [f'Customer_{i}' for i in range(1, n)]
-
     df = pd.DataFrame({
         'stop_id':   range(n),
-        'label':     labels,
+        'label':     ['Depot'] + [f'Customer_{i}' for i in range(1, n)],
         'lat':       lats,
         'lon':       lons,
-        'demand_kg': [0] + list(np.random.uniform(1, 10, n - 1).round(1)) if n > 1 else [0]
+        'demand_kg': [0] + list(np.random.uniform(1, 10, n - 1).round(1))
     })
     return df
 
@@ -92,7 +86,6 @@ def nearest_neighbor(dist_matrix: np.ndarray, start: int = 0) -> Tuple[List[int]
         visited[best_next] = True
         total_dist += best_dist
 
-    # Return to depot
     total_dist += dist_matrix[route[-1]][start]
     route.append(start)
     return route, round(total_dist, 3)
@@ -130,27 +123,42 @@ def multi_vehicle_routing(df: pd.DataFrame, n_vehicles: int = 2) -> dict:
     """
     Splits customers across vehicles using round-robin assignment
     then optimizes each sub-route independently.
+
+    FIX: Build sub_dist using only the unique stops assigned to each vehicle
+         (including depot at index 0). Previously stops_with_return added
+         depot twice causing the sub-matrix to include an extra phantom row/col.
+         Now we use a clean ordered list of unique stops per vehicle.
     """
-    customers  = df[df['stop_id'] != 0].copy().reset_index(drop=True)
-    assignments = {v: [0] for v in range(n_vehicles)}  # all start at depot
-
-    for i, row in customers.iterrows():
-        assignments[i % n_vehicles].append(int(row['stop_id']))
-
-    dist_matrix = build_distance_matrix(df)
+    customers   = df[df['stop_id'] != 0].copy().reset_index(drop=True)
+    full_dist   = build_distance_matrix(df)
     routes_info = {}
 
-    for v, stops in assignments.items():
-        stops_with_return = stops + [0]
-        sub_dist = np.array([[dist_matrix[i][j] for j in stops_with_return]
-                              for i in stops_with_return])
-        idx_map  = stops_with_return
-        raw_route, dist_nn = nearest_neighbor(sub_dist, start=0)
+    for v in range(n_vehicles):
+        # Collect this vehicle's customer stop_ids (round-robin)
+        assigned = [int(customers.iloc[i]['stop_id'])
+                    for i in range(len(customers)) if i % n_vehicles == v]
+
+        # FIX: unique_stops = [depot=0] + assigned customers (no duplicate depot)
+        unique_stops = [0] + assigned
+
+        # Build a sub-distance matrix over unique_stops only
+        m = len(unique_stops)
+        sub_dist = np.zeros((m, m))
+        for a in range(m):
+            for b in range(m):
+                sub_dist[a][b] = full_dist[unique_stops[a]][unique_stops[b]]
+
+        # Optimize on sub_dist indices (0 = depot in sub-matrix)
+        raw_route, dist_nn   = nearest_neighbor(sub_dist, start=0)
         opt_route, dist_2opt = two_opt(raw_route, sub_dist)
 
-        routes_info[f'vehicle_{v+1}'] = {
-            'stops':          [idx_map[i] for i in opt_route],
-            'stop_labels':    [df.iloc[idx_map[i]]['label'] for i in opt_route],
+        # Map sub-indices back to original stop_ids
+        mapped_stops  = [unique_stops[i] for i in opt_route]
+        mapped_labels = [df.iloc[unique_stops[i]]['label'] for i in opt_route]
+
+        routes_info[f'vehicle_{v + 1}'] = {
+            'stops':          mapped_stops,
+            'stop_labels':    mapped_labels,
             'total_dist_km':  dist_2opt,
             'improvement_km': round(dist_nn - dist_2opt, 3)
         }
@@ -166,7 +174,6 @@ def plot_routes(df: pd.DataFrame, routes_info: dict):
     colors  = ['steelblue', 'darkorange', 'green', 'red', 'purple']
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    # Plot all stops
     for _, row in df.iterrows():
         color  = 'red' if row['stop_id'] == 0 else 'gray'
         marker = '*' if row['stop_id'] == 0 else 'o'
@@ -174,7 +181,6 @@ def plot_routes(df: pd.DataFrame, routes_info: dict):
         ax.annotate(row['label'], (row['lon'], row['lat']),
                     textcoords='offset points', xytext=(5, 5), fontsize=7)
 
-    # Plot vehicle routes
     for vi, (vname, info) in enumerate(routes_info.items()):
         stops  = info['stops']
         lats   = [df.iloc[s]['lat'] for s in stops]

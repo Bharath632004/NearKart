@@ -48,7 +48,7 @@ def generate_inventory_data(n_products: int = 5, n_days: int = 180) -> pd.DataFr
 # ----------------------------------------------------------------
 def is_stationary(series: pd.Series) -> bool:
     result = adfuller(series.dropna())
-    return result[1] < 0.05   # p-value < 0.05 → stationary
+    return result[1] < 0.05
 
 
 # ----------------------------------------------------------------
@@ -66,13 +66,13 @@ def train_arima(series: pd.Series, order=(2, 1, 2)) -> ARIMA:
 def calculate_reorder_point(avg_demand: float, lead_time: float,
                             std_demand: float, service_level_z: float = 1.65) -> dict:
     """
-    Reorder Point = (Avg Demand × Lead Time) + Safety Stock
-    Safety Stock  = Z × StdDev(Demand) × sqrt(Lead Time)
+    Reorder Point = (Avg Demand x Lead Time) + Safety Stock
+    Safety Stock  = Z x StdDev(Demand) x sqrt(Lead Time)
     Z = 1.65 for 95% service level.
     """
     safety_stock  = service_level_z * std_demand * np.sqrt(lead_time)
     reorder_point = (avg_demand * lead_time) + safety_stock
-    eoq = np.sqrt((2 * avg_demand * 365 * 50) / 2)   # EOQ formula (order cost=50, holding=2)
+    eoq = np.sqrt((2 * avg_demand * 365 * 50) / 2)
 
     return {
         'avg_daily_demand':  round(avg_demand, 2),
@@ -92,24 +92,21 @@ def forecast_inventory(df: pd.DataFrame, forecast_days: int = 14) -> pd.DataFram
 
     for pid, group in df.groupby('product_id'):
         # FIX: Replace deprecated fillna(method='ffill') with .ffill()
-        # fillna(method=...) was deprecated in pandas 2.0 and raises TypeError.
+        #      fillna(method=...) raises FutureWarning in pandas >= 2.1
         series      = group.set_index('date')['units_sold'].asfreq('D').ffill()
         lead_time   = group['lead_time_days'].mean()
         avg_demand  = series.mean()
         std_demand  = series.std()
 
-        # Train
         arima_model = train_arima(series)
         forecast    = arima_model.forecast(steps=forecast_days)
         forecast    = np.clip(forecast, 0, None)
 
-        # Evaluate on last 14 days
         train_len   = len(series) - 14
         eval_model  = train_arima(series.iloc[:train_len])
         eval_fc     = eval_model.forecast(steps=14)
         mae         = mean_absolute_error(series.iloc[train_len:], eval_fc)
 
-        # Reorder metrics
         metrics     = calculate_reorder_point(avg_demand, lead_time, std_demand)
 
         results.append({
@@ -119,10 +116,8 @@ def forecast_inventory(df: pd.DataFrame, forecast_days: int = 14) -> pd.DataFram
             **metrics
         })
 
-        # Save model
         joblib.dump(arima_model, f'models/arima_{pid}.pkl')
 
-        # Plot
         plt.figure(figsize=(10, 4))
         plt.plot(series.index, series.values, label='Historical', color='steelblue')
         future_dates = pd.date_range(series.index[-1], periods=forecast_days + 1, freq='D')[1:]

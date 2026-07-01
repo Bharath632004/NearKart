@@ -24,17 +24,15 @@ warnings.filterwarnings('ignore')
 def generate_data(n_users=200, n_products=100, n_ratings=3000):
     np.random.seed(42)
 
-    # Ratings
     user_ids    = np.random.randint(1, n_users + 1, n_ratings)
     product_ids = np.random.randint(1, n_products + 1, n_ratings)
     ratings     = np.random.choice([1, 2, 3, 4, 5], n_ratings, p=[0.05, 0.1, 0.2, 0.35, 0.3])
     ratings_df  = pd.DataFrame({'user_id': user_ids, 'product_id': product_ids, 'rating': ratings})
     ratings_df  = ratings_df.drop_duplicates(subset=['user_id', 'product_id'])
 
-    # Product catalog
     categories  = ['Groceries', 'Dairy', 'Snacks', 'Beverages', 'Personal Care',
                    'Household', 'Bakery', 'Frozen', 'Organic', 'Baby']
-    brands      = ['Amul', 'Nestl\u00e9', 'Parle', 'Britannia', 'ITC', 'HUL', 'P&G', 'Dabur']
+    brands      = ['Amul', 'Nestle', 'Parle', 'Britannia', 'ITC', 'HUL', 'P&G', 'Dabur']
 
     products_df = pd.DataFrame({
         'product_id': range(1, n_products + 1),
@@ -92,7 +90,10 @@ def build_content_model(products_df: pd.DataFrame):
 # ----------------------------------------------------------------
 def content_recommendations(product_id: int, products_df: pd.DataFrame,
                              cosine_sim: np.ndarray, top_n: int = 5) -> pd.DataFrame:
-    idx      = products_df.index[products_df['product_id'] == product_id][0]
+    idx_arr = products_df.index[products_df['product_id'] == product_id]
+    if len(idx_arr) == 0:
+        raise ValueError(f"product_id {product_id} not found in catalog.")
+    idx      = idx_arr[0]
     scores   = list(enumerate(cosine_sim[idx]))
     scores   = sorted(scores, key=lambda x: x[1], reverse=True)
     top_idx  = [i for i, _ in scores[1:top_n + 1]]
@@ -127,7 +128,12 @@ def hybrid_recommendations(user_id: int, product_id: int,
     """
     Blends collaborative and content-based scores.
     Handles cold-start: if new user, fallback to content-based only.
+    FIX: Added product_id existence check before indexing to prevent IndexError.
     """
+    # FIX: Validate product_id exists before any indexing operation
+    if product_id not in products_df['product_id'].values:
+        raise ValueError(f"product_id {product_id} not found in catalog.")
+
     model      = joblib.load('models/svd_model.pkl')
     cosine_sim = joblib.load('models/cosine_sim.pkl')
 
@@ -138,21 +144,13 @@ def hybrid_recommendations(user_id: int, product_id: int,
         print(f"[Cold Start] User {user_id} has few ratings. Using content-based only.")
         return content_recommendations(product_id, products_df, cosine_sim, top_n)
 
-    # Collaborative scores
     all_pids  = products_df['product_id'].tolist()
     cf_scores = {pid: model.predict(user_id, pid).est for pid in all_pids}
 
-    # FIX: Use enumerate(iterrows()) to safely map cosine_sim matrix positions
-    # to product_ids. The previous range(len()) approach would cause an
-    # IndexError if products_df had a non-contiguous index (e.g. after
-    # drop_duplicates or filtering).
     ref_idx   = products_df.index[products_df['product_id'] == product_id][0]
-    cb_scores = {
-        row['product_id']: cosine_sim[ref_idx][pos]
-        for pos, (_, row) in enumerate(products_df.iterrows())
-    }
+    cb_scores = {products_df.iloc[i]['product_id']: cosine_sim[ref_idx][i]
+                 for i in range(len(products_df))}
 
-    # Normalize and blend
     cf_vals   = np.array([cf_scores[p] for p in all_pids])
     cb_vals   = np.array([cb_scores[p] for p in all_pids])
     cf_norm   = (cf_vals - cf_vals.min()) / (cf_vals.max() - cf_vals.min() + 1e-9)

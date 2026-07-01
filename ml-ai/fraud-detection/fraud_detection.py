@@ -41,10 +41,10 @@ def generate_transactions(n: int = 5000) -> pd.DataFrame:
     })
 
     fraud = pd.DataFrame({
-        'amount':           np.random.uniform(1500, 10000, n_fraud),   # high amount
-        'hour_of_day':      np.random.randint(0, 5, n_fraud),          # odd hours
+        'amount':           np.random.uniform(1500, 10000, n_fraud),
+        'hour_of_day':      np.random.randint(0, 5, n_fraud),
         'day_of_week':      np.random.randint(0, 7, n_fraud),
-        'distance_km':      np.random.uniform(50, 500, n_fraud),       # far delivery
+        'distance_km':      np.random.uniform(50, 500, n_fraud),
         'is_new_account':   np.random.choice([0, 1], n_fraud, p=[0.3, 0.7]),
         'failed_attempts':  np.random.randint(3, 10, n_fraud),
         'payment_method':   np.random.choice(['UPI', 'Card', 'COD', 'Wallet'], n_fraud),
@@ -86,14 +86,14 @@ def rule_based_flags(df: pd.DataFrame) -> pd.Series:
     """
     Fast hard-coded rules that flag obvious fraud before ML scoring.
     Returns a boolean Series: True = suspicious.
-    FIX: Added explicit parentheses to correct operator precedence
-         (& binds tighter than |, causing wrong grouping without them).
+    FIX: Added parentheses around each compound & clause to fix
+         operator precedence bug (| binds looser than & in Python).
     """
     return (
-        (df['amount']          > 8000)                                          |
-        (df['failed_attempts'] >= 5)                                            |
-        ((df['geo_mismatch']    == 1) & (df['distance_km'] > 100))              |
-        ((df['hour_of_day']     <= 3) & (df['is_new_account'] == 1))
+        (df['amount']          > 8000) |
+        (df['failed_attempts'] >= 5)   |
+        ((df['geo_mismatch'] == 1) & (df['distance_km'] > 100)) |
+        ((df['hour_of_day'] <= 3)  & (df['is_new_account'] == 1))
     )
 
 
@@ -115,12 +115,10 @@ def train_xgboost(X: np.ndarray, y: np.ndarray):
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # Handle class imbalance with SMOTE
     sm = SMOTE(random_state=42)
     X_res, y_res = sm.fit_resample(X_train, y_train)
 
-    # FIX: Removed deprecated `use_label_encoder=False` parameter.
-    # It was removed in XGBoost >= 1.6 and causes a TypeError.
+    # FIX: Removed deprecated `use_label_encoder=False` (removed in XGBoost >= 1.6)
     model = xgb.XGBClassifier(
         n_estimators=300,
         max_depth=6,
@@ -178,7 +176,6 @@ if __name__ == '__main__':
     iso_model           = train_isolation_forest(X)
     xgb_model, Xt, yt  = train_xgboost(X, y)
 
-    # Sample prediction
     sample_txn = {
         'amount': 9500, 'hour_of_day': 2, 'day_of_week': 6,
         'distance_km': 250, 'is_new_account': 1, 'failed_attempts': 7,
