@@ -22,20 +22,35 @@ class Order {
   });
 
   factory Order.fromJson(Map<String, dynamic> json) => Order(
-        id: json['id'],
-        shopId: json['shopId'],
-        userId: json['userId'],
-        items: (json['items'] as List)
+        id: json['id']?.toString() ?? '',
+        shopId: json['shopId']?.toString() ?? '',
+        userId: json['userId']?.toString() ?? '',
+        items: (json['items'] as List? ?? [])
             .map((e) => OrderItem.fromJson(e))
             .toList(),
-        totalAmount: (json['totalAmount'] as num).toDouble(),
+        totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
         status: OrderStatus.values.firstWhere(
-          (e) => e.name == json['status'],
+          (e) => e.name.toLowerCase() == (json['status'] as String? ?? '').toLowerCase(),
           orElse: () => OrderStatus.placed,
         ),
-        createdAt: DateTime.parse(json['createdAt']),
-        deliveryAddress: json['deliveryAddress'],
+        createdAt: json['createdAt'] != null
+            ? DateTime.tryParse(json['createdAt']) ?? DateTime.now()
+            : DateTime.now(),
+        deliveryAddress: json['deliveryAddress'] as String? ?? '',
       );
+
+  // ADDED: used by OrderHistoryScreen to convert back to Map for display
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'shopId': shopId,
+        'shopName': null, // populated from API response if available
+        'userId': userId,
+        'items': items.map((e) => e.toJson()).toList(),
+        'totalAmount': totalAmount,
+        'status': status.name,
+        'createdAt': createdAt.toIso8601String(),
+        'deliveryAddress': deliveryAddress,
+      };
 }
 
 class OrderItem {
@@ -52,9 +67,17 @@ class OrderItem {
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
-        productId: json['productId'],
-        name: json['name'],
-        quantity: json['quantity'],
-        price: (json['price'] as num).toDouble(),
+        productId: json['productId']?.toString() ?? '',
+        name: json['name'] as String? ?? json['productName'] as String? ?? 'Item',
+        quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+        price: (json['price'] as num?)?.toDouble() ?? 0.0,
       );
+
+  // ADDED: used by Order.toJson()
+  Map<String, dynamic> toJson() => {
+        'productId': productId,
+        'productName': name,
+        'quantity': quantity,
+        'price': price,
+      };
 }
