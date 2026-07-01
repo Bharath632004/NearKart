@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
+import '../../core/constants/app_constants.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -15,11 +17,23 @@ class _WalletScreenState extends State<WalletScreen> {
   double _balance = 0.0;
   List<dynamic> _transactions = [];
   String? _error;
+  double? _pendingTopUpAmount;
+  late Razorpay _razorpay;
 
   @override
   void initState() {
     super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _onExternalWallet);
     _loadWallet();
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    super.dispose();
   }
 
   Future<void> _loadWallet() async {
@@ -45,6 +59,82 @@ class _WalletScreenState extends State<WalletScreen> {
     }
   }
 
+  // ── Razorpay handlers ────────────────────────────────────────────
+  void _onPaymentSuccess(PaymentSuccessResponse response) async {
+    final userId = context.read<AuthProvider>().userId ?? '';
+    final amount = _pendingTopUpAmount ?? 0;
+    try {
+      await ApiService.addMoneyToWallet(
+        userId: userId,
+        amount: amount,
+        paymentId: response.paymentId ?? '',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('\u20b9${amount.toStringAsFixed(0)} added to wallet!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      await _loadWallet();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Wallet update failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      _pendingTopUpAmount = null;
+    }
+  }
+
+  void _onPaymentError(PaymentFailureResponse response) {
+    _pendingTopUpAmount = null;
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment failed: ${response.message ?? "Unknown error"}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _onExternalWallet(ExternalWalletResponse response) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('External wallet: ${response.walletName}'),
+        ),
+      );
+    }
+  }
+
+  void _openRazorpay(double amount) {
+    final auth = context.read<AuthProvider>();
+    _pendingTopUpAmount = amount;
+    final options = {
+      'key': AppConstants.razorpayKey,
+      'amount': (amount * 100).toInt(), // paise
+      'name': 'NearKart Wallet',
+      'description': 'Add money to wallet',
+      'prefill': {
+        'contact': auth.phone ?? '',
+      },
+      'theme': {'color': '#6C63FF'},
+    };
+    try {
+      _razorpay.open(options);
+    } catch (e) {
+      _pendingTopUpAmount = null;
+      debugPrint('Razorpay open error: $e');
+    }
+  }
+
   Future<void> _showAddMoneyDialog() async {
     final controller = TextEditingController();
     final result = await showDialog<double>(
@@ -53,9 +143,9 @@ class _WalletScreenState extends State<WalletScreen> {
         title: const Text('Add Money'),
         content: TextField(
           controller: controller,
-          keyboardType: TextInputType.number,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: const InputDecoration(
-            labelText: 'Amount (₹)',
+            labelText: 'Amount (\u20b9)',
             prefixIcon: Icon(Icons.currency_rupee),
           ),
         ),
@@ -66,23 +156,23 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final amount = double.tryParse(controller.text);
-              if (amount != null && amount > 0) {
+              final amount = double.tryParse(controller.text.trim());
+              if (amount != null && amount >= 10) {
                 Navigator.pop(ctx, amount);
+              } else {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(
+                      content: Text('Minimum top-up is \u20b910')),
+                );
               }
             },
-            child: const Text('Proceed'),
+            child: const Text('Proceed to Pay'),
           ),
         ],
       ),
     );
     if (result != null && mounted) {
-      // TODO: integrate Razorpay payment then call addMoneyToWallet
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Initiating payment for ₹${result.toStringAsFixed(2)}...'),
-        ),
-      );
+      _openRazorpay(result);
     }
   }
 
@@ -166,7 +256,7 @@ class _WalletScreenState extends State<WalletScreen> {
               style: TextStyle(color: Colors.white70, fontSize: 14)),
           const SizedBox(height: 8),
           Text(
-            '₹${_balance.toStringAsFixed(2)}',
+            '\u20b9${_balance.toStringAsFixed(2)}',
             style: const TextStyle(
                 color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
           ),
@@ -326,7 +416,7 @@ class _TransactionTile extends StatelessWidget {
             ),
           ),
           Text(
-            '${isCredit ? '+' : '-'}₹${amount.toStringAsFixed(2)}',
+            '${isCredit ? '+' : '-'}\u20b9${amount.toStringAsFixed(2)}',
             style: TextStyle(
               color: isCredit ? Colors.green : Colors.red,
               fontWeight: FontWeight.bold,

@@ -136,6 +136,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _showComingSoon(String feature) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.construction, size: 48, color: Colors.orange),
+            const SizedBox(height: 12),
+            Text(feature,
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('Coming soon!',
+                style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openUrl(String url) async {
+    // Placeholder — integrate url_launcher when needed
+    _showComingSoon('Opening link...');
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -266,11 +303,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         children: [
           _InfoRow(icon: Icons.phone, label: 'Phone', value: phone),
-          if (email.isNotEmpty) ...
-            [
-              const Divider(height: 16),
-              _InfoRow(icon: Icons.email, label: 'Email', value: email),
-            ],
+          if (email.isNotEmpty) ...[
+            const Divider(height: 16),
+            _InfoRow(icon: Icons.email, label: 'Email', value: email),
+          ],
         ],
       ),
     );
@@ -290,19 +326,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _MenuItem(
           icon: Icons.location_on_outlined,
           label: 'Saved Addresses',
-          onTap: () {}),
+          onTap: () => _showComingSoon('Saved Addresses')),
       _MenuItem(
           icon: Icons.notifications_outlined,
           label: 'Notifications',
-          onTap: () {}),
+          onTap: () => _showComingSoon('Notifications')),
       _MenuItem(
           icon: Icons.help_outline,
           label: 'Help & Support',
-          onTap: () {}),
+          onTap: () => _showComingSoon('Help & Support')),
       _MenuItem(
           icon: Icons.policy_outlined,
           label: 'Privacy Policy',
-          onTap: () {}),
+          onTap: () => _openUrl('https://nearkart.in/privacy')),
     ];
 
     return Container(
