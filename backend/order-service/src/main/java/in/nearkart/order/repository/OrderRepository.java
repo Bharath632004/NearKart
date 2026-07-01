@@ -11,11 +11,14 @@ import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-    List<Order> findByUserIdOrderByCreatedAtDesc(Long userId);
+    @Query("SELECT o FROM Order o WHERE o.userId = :userId ORDER BY o.createdAt DESC")
+    List<Order> findByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId);
 
-    List<Order> findByShopIdOrderByCreatedAtDesc(Long shopId);
+    @Query("SELECT o FROM Order o WHERE o.shopId = :shopId ORDER BY o.createdAt DESC")
+    List<Order> findByShopIdOrderByCreatedAtDesc(@Param("shopId") Long shopId);
 
-    List<Order> findByStatus(OrderStatus status);
+    @Query("SELECT o FROM Order o WHERE o.status = :status")
+    List<Order> findByStatus(@Param("status") OrderStatus status);
 
     @Query("SELECT o FROM Order o WHERE o.status = :status ORDER BY o.createdAt DESC LIMIT 1")
     Optional<Order> findLatestByStatus(@Param("status") OrderStatus status);
