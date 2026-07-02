@@ -1,44 +1,42 @@
+server:
+  port: 8082
+
 spring:
   application:
     name: order-service
-
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5433/nearkart}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/nearkart_orders}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:Bharath@2004}
-    driver-class-name: org.postgresql.Driver
-
+    password: ${DB_PASSWORD:changeme}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false
+        default_schema: public
 
-  # Kafka (disabled by default until notification-service is ready)
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+eureka:
+  client:
+    enabled: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
 
-  # Redis (disabled by default)
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-
-server:
-  port: ${SERVER_PORT:8082}
+app:
+  cancel-window-minutes: 10
+  return-window-hours: 24
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
 
 logging:
   level:
-    in.nearkart: DEBUG
+    com.nearkart: DEBUG
+    org.springframework.security: INFO
