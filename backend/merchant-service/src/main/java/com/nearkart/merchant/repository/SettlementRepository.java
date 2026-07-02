@@ -1,7 +1,7 @@
 package com.nearkart.merchant.repository;
 
 import com.nearkart.merchant.entity.Settlement;
-import com.nearkart.merchant.entity.Settlement.SettlementStatus;
+import com.nearkart.merchant.entity.SettlementStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

@@ -1,6 +1,6 @@
 package com.nearkart.merchant.dto;
 
-import com.nearkart.merchant.entity.Settlement.SettlementStatus;
+import com.nearkart.merchant.entity.SettlementStatus;
 import lombok.Builder;
 import lombok.Data;
 import java.math.BigDecimal;

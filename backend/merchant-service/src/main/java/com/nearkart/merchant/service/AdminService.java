@@ -2,7 +2,7 @@ package com.nearkart.merchant.service;
 
 import com.nearkart.merchant.dto.*;
 import com.nearkart.merchant.entity.*;
-import com.nearkart.merchant.entity.Settlement.SettlementStatus;
+import com.nearkart.merchant.entity.SettlementStatus;
 import com.nearkart.merchant.exception.ResourceNotFoundException;
 import com.nearkart.merchant.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -96,9 +96,9 @@ public class AdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Merchant not found: " + request.getMerchantId()));
 
         BigDecimal platformFee = request.getGrossAmount()
-                .multiply(BigDecimal.valueOf(0.05)); // 5% platform fee
+                .multiply(BigDecimal.valueOf(0.05));
         BigDecimal taxDeducted = platformFee
-                .multiply(BigDecimal.valueOf(0.18)); // 18% GST on fee
+                .multiply(BigDecimal.valueOf(0.18));
         BigDecimal netAmount = request.getGrossAmount().subtract(platformFee).subtract(taxDeducted);
 
         Settlement settlement = Settlement.builder()
@@ -151,8 +151,6 @@ public class AdminService {
                 .totalSettledAmount(totalSettled)
                 .build();
     }
-
-    // ─── Mappers ─────────────────────────────────────────────────────────────────
 
     private MerchantResponse toMerchantResponse(Merchant m) {
         return MerchantResponse.builder()

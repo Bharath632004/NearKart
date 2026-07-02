@@ -1,6 +1,6 @@
 package com.nearkart.merchant.dto;
 
-import com.nearkart.merchant.entity.Promotion.PromoType;
+import com.nearkart.merchant.entity.PromoType;
 import lombok.Builder;
 import lombok.Data;
 import java.math.BigDecimal;
