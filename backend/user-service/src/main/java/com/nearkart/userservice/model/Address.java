@@ -1,57 +1,55 @@
 package com.nearkart.userservice.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
+import lombok.*;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "addresses")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Address {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private Long userId;
 
-    @NotBlank
+    @Column(nullable = false)
     private String street;
 
-    @NotBlank
+    @Column(nullable = false)
     private String city;
 
-    @NotBlank
+    @Column(nullable = false)
     private String state;
 
-    @NotBlank
+    @Column(nullable = false)
     private String pincode;
 
     private String landmark;
 
+    @Builder.Default
     private boolean isDefault = false;
 
-    public Address() {}
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    private LocalDateTime updatedAt;
 
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
 
-    public String getStreet() { return street; }
-    public void setStreet(String street) { this.street = street; }
-
-    public String getCity() { return city; }
-    public void setCity(String city) { this.city = city; }
-
-    public String getState() { return state; }
-    public void setState(String state) { this.state = state; }
-
-    public String getPincode() { return pincode; }
-    public void setPincode(String pincode) { this.pincode = pincode; }
-
-    public String getLandmark() { return landmark; }
-    public void setLandmark(String landmark) { this.landmark = landmark; }
-
-    public boolean isDefault() { return isDefault; }
-    public void setDefault(boolean aDefault) { isDefault = aDefault; }
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

@@ -2,25 +2,25 @@ package com.nearkart.userservice.controller;
 
 import com.nearkart.userservice.dto.ChangePasswordRequest;
 import com.nearkart.userservice.dto.UpdateProfileRequest;
-import com.nearkart.userservice.model.User;
+import com.nearkart.userservice.dto.UserResponse;
 import com.nearkart.userservice.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 @Tag(name = "User Management", description = "APIs for managing user profiles")
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
@@ -29,13 +29,13 @@ public class UserController {
 
     @GetMapping("/me")
     @Operation(summary = "Get current user profile")
-    public ResponseEntity<User> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<UserResponse> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(userService.getProfile(userDetails.getUsername()));
     }
 
     @PutMapping("/me")
     @Operation(summary = "Update current user profile")
-    public ResponseEntity<User> updateProfile(
+    public ResponseEntity<UserResponse> updateProfile(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody UpdateProfileRequest request) {
         return ResponseEntity.ok(userService.updateProfile(userDetails.getUsername(), request));
@@ -59,15 +59,18 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Admin: Get all users")
-    public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+    @Operation(summary = "Admin: Get all users (paginated)")
+    public ResponseEntity<Page<UserResponse>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(userService.getAllUsers(pageable));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Admin: Get user by ID")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 

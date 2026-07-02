@@ -2,68 +2,77 @@ package com.nearkart.userservice.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleUserNotFound(UserNotFoundException ex) {
-        return buildError(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-
-    @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<Map<String, Object>> handleEmailExists(EmailAlreadyExistsException ex) {
-        return buildError(HttpStatus.CONFLICT, ex.getMessage());
-    }
-
-    @ExceptionHandler(PhoneAlreadyExistsException.class)
-    public ResponseEntity<Map<String, Object>> handlePhoneExists(PhoneAlreadyExistsException ex) {
-        return buildError(HttpStatus.CONFLICT, ex.getMessage());
-    }
-
-    @ExceptionHandler(InvalidPasswordException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidPassword(InvalidPasswordException ex) {
-        return buildError(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    public ResponseEntity<Map<String, Object>> handleNotFound(UserNotFoundException ex) {
+        return error(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(AddressNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleAddressNotFound(AddressNotFoundException ex) {
-        return buildError(HttpStatus.NOT_FOUND, ex.getMessage());
+        return error(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
-        return buildError(HttpStatus.BAD_REQUEST, ex.getMessage());
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<Map<String, Object>> handleEmailExists(EmailAlreadyExistsException ex) {
+        return error(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(PhoneAlreadyExistsException.class)
+    public ResponseEntity<Map<String, Object>> handlePhoneExists(PhoneAlreadyExistsException ex) {
+        return error(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidPasswordException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidPassword(InvalidPasswordException ex) {
+        return error(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+    }
+
+    @ExceptionHandler(AccountDeactivatedException.class)
+    public ResponseEntity<Map<String, Object>> handleDeactivated(AccountDeactivatedException ex) {
+        return error(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        return error(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArg(IllegalArgumentException ex) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
-        Map<String, Object> errors = new HashMap<>();
-        Map<String, String> fieldErrors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors()
-                .forEach(err -> fieldErrors.put(err.getField(), err.getDefaultMessage()));
-        errors.put("errors", fieldErrors);
-        errors.put("timestamp", LocalDateTime.now().toString());
-        errors.put("status", HttpStatus.UNPROCESSABLE_ENTITY.value());
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errors);
+        String errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        return error(HttpStatus.BAD_REQUEST, errors);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
-        return buildError(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error: " + ex.getMessage());
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
     }
 
-    private ResponseEntity<Map<String, Object>> buildError(HttpStatus status, String message) {
-        Map<String, Object> error = new HashMap<>();
-        error.put("error", message);
-        error.put("timestamp", LocalDateTime.now().toString());
-        error.put("status", status.value());
-        return ResponseEntity.status(status).body(error);
+    private ResponseEntity<Map<String, Object>> error(HttpStatus status, String message) {
+        return ResponseEntity.status(status).body(Map.of(
+            "timestamp", LocalDateTime.now().toString(),
+            "status", status.value(),
+            "error", status.getReasonPhrase(),
+            "message", message
+        ));
     }
 }
