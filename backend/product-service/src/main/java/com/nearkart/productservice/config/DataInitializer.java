@@ -1,36 +1,46 @@
 package com.nearkart.productservice.config;
 
-import com.nearkart.productservice.model.Category;
 import com.nearkart.productservice.repository.CategoryRepository;
+import com.nearkart.productservice.model.Category;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import java.util.List;
 
-@Component
+@Configuration
 @RequiredArgsConstructor
 @Slf4j
-public class DataInitializer implements CommandLineRunner {
+public class DataInitializer {
 
     private final CategoryRepository categoryRepository;
 
-    @Override
-    public void run(String... args) {
-        if (categoryRepository.count() == 0) {
-            List<Category> categories = List.of(
-                Category.builder().name("Groceries").description("Fresh groceries and daily essentials").build(),
-                Category.builder().name("Fruits & Vegetables").description("Fresh fruits and vegetables").build(),
-                Category.builder().name("Dairy & Eggs").description("Milk, cheese, butter, eggs").build(),
-                Category.builder().name("Bakery").description("Fresh bread, cakes, pastries").build(),
-                Category.builder().name("Beverages").description("Juices, sodas, water, tea, coffee").build(),
-                Category.builder().name("Snacks").description("Chips, biscuits, nuts").build(),
-                Category.builder().name("Personal Care").description("Soap, shampoo, toothpaste").build(),
-                Category.builder().name("Household").description("Cleaning and household supplies").build()
+    @Bean
+    @Profile("!test")
+    public CommandLineRunner seedCategories() {
+        return args -> {
+            List<String> defaultCategories = List.of(
+                "Fruits & Vegetables", "Dairy & Eggs", "Meat & Seafood",
+                "Bakery", "Beverages", "Snacks", "Household", "Personal Care"
             );
-            categoryRepository.saveAll(categories);
-            log.info("Seeded {} default categories", categories.size());
-        }
+
+            long existingCount = categoryRepository.count();
+            if (existingCount > 0) {
+                log.info("DataInitializer: {} categories already exist \u2014 skipping seed", existingCount);
+                return;
+            }
+
+            defaultCategories.forEach(name -> {
+                if (!categoryRepository.existsByNameIgnoreCase(name)) {
+                    categoryRepository.save(Category.builder().name(name).build());
+                    log.info("Seeded category: {}", name);
+                }
+            });
+
+            log.info("DataInitializer: seeding complete");
+        };
     }
 }

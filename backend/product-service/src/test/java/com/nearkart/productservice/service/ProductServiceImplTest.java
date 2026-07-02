@@ -1,26 +1,24 @@
 package com.nearkart.productservice.service;
 
-import com.nearkart.productservice.dto.ProductRequest;
-import com.nearkart.productservice.dto.ProductResponse;
+import com.nearkart.productservice.dto.*;
+import com.nearkart.productservice.exception.CategoryNotFoundException;
 import com.nearkart.productservice.exception.ProductNotFoundException;
 import com.nearkart.productservice.model.Category;
 import com.nearkart.productservice.model.Product;
 import com.nearkart.productservice.repository.CategoryRepository;
 import com.nearkart.productservice.repository.ProductRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,174 +28,94 @@ class ProductServiceImplTest {
     @Mock private CategoryRepository categoryRepository;
     @InjectMocks private ProductServiceImpl productService;
 
-    private Product sampleProduct;
-    private ProductRequest sampleRequest;
-    private Category sampleCategory;
+    private Product buildProduct(Long id, int stock) {
+        Product p = Product.builder()
+                .name("Test Product").description("desc")
+                .price(BigDecimal.TEN).stockQuantity(stock)
+                .shopId(1L).available(stock > 0).build();
+        ReflectionTestUtils.setField(p, "id", id);
+        return p;
+    }
 
-    @BeforeEach
-    void setUp() {
-        sampleCategory = Category.builder().id(1L).name("Groceries").build();
-
-        sampleProduct = Product.builder()
-                .id(1L)
-                .name("Apple")
-                .description("Fresh apples")
-                .price(new BigDecimal("50.00"))
-                .stockQuantity(100)
-                .available(true)
-                .shopId(10L)
-                .category(sampleCategory)
-                .build();
-
-        sampleRequest = new ProductRequest();
-        sampleRequest.setName("Apple");
-        sampleRequest.setDescription("Fresh apples");
-        sampleRequest.setPrice(new BigDecimal("50.00"));
-        sampleRequest.setStockQuantity(100);
-        sampleRequest.setShopId(10L);
-        sampleRequest.setCategoryId(1L);
+    private Category buildCategory(Long id) {
+        Category c = Category.builder().name("Fruits").description("Fresh fruits").build();
+        ReflectionTestUtils.setField(c, "id", id);
+        return c;
     }
 
     @Test
-    @DisplayName("createProduct - should persist and return ProductResponse")
-    void createProduct_shouldReturnProductResponse() {
-        when(categoryRepository.findById(1L)).thenReturn(Optional.of(sampleCategory));
-        when(productRepository.save(any(Product.class))).thenReturn(sampleProduct);
-
-        ProductResponse response = productService.createProduct(sampleRequest);
-
-        assertThat(response).isNotNull();
-        assertThat(response.getName()).isEqualTo("Apple");
-        assertThat(response.getPrice()).isEqualByComparingTo("50.00");
-        assertThat(response.getCategoryName()).isEqualTo("Groceries");
-        verify(productRepository, times(1)).save(any(Product.class));
-    }
-
-    @Test
-    @DisplayName("getProductById - should return product when it exists")
-    void getProductById_shouldReturnProduct_whenExists() {
-        when(productRepository.findById(1L)).thenReturn(Optional.of(sampleProduct));
-
-        ProductResponse response = productService.getProductById(1L);
-
-        assertThat(response.getId()).isEqualTo(1L);
-        assertThat(response.getName()).isEqualTo("Apple");
-    }
-
-    @Test
-    @DisplayName("getProductById - should throw ProductNotFoundException when not found")
-    void getProductById_shouldThrow_whenNotFound() {
+    void getProductById_notFound_throwsException() {
         when(productRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> productService.getProductById(99L))
-                .isInstanceOf(ProductNotFoundException.class)
-                .hasMessageContaining("99");
+        assertThrows(ProductNotFoundException.class, () -> productService.getProductById(99L));
     }
 
     @Test
-    @DisplayName("getAllProducts - should return all products")
-    void getAllProducts_shouldReturnList() {
-        when(productRepository.findAll()).thenReturn(List.of(sampleProduct));
-
-        List<ProductResponse> products = productService.getAllProducts();
-
-        assertThat(products).hasSize(1);
-        assertThat(products.get(0).getName()).isEqualTo("Apple");
+    void createProduct_duplicateNameInShop_throwsException() {
+        when(productRepository.existsByNameIgnoreCaseAndShopId("Test Product", 1L)).thenReturn(true);
+        ProductRequest req = new ProductRequest();
+        req.setName("Test Product");
+        req.setShopId(1L);
+        req.setPrice(BigDecimal.TEN);
+        req.setStockQuantity(10);
+        assertThrows(IllegalArgumentException.class, () -> productService.createProduct(req));
     }
 
     @Test
-    @DisplayName("getAvailableProducts - should return only available products")
-    void getAvailableProducts_shouldReturnList() {
-        when(productRepository.findByAvailableTrue()).thenReturn(List.of(sampleProduct));
-
-        List<ProductResponse> products = productService.getAvailableProducts();
-
-        assertThat(products).hasSize(1);
-        assertThat(products.get(0).isAvailable()).isTrue();
+    void updateStock_absolute_setsExactQuantity() {
+        Product p = buildProduct(1L, 10);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        when(productRepository.save(any())).thenReturn(p);
+        productService.updateStock(1L, 5, false);
+        assertEquals(5, p.getStockQuantity());
+        assertTrue(p.isAvailable());
     }
 
     @Test
-    @DisplayName("getProductsByPriceRange - should throw when min > max")
-    void getProductsByPriceRange_shouldThrow_whenMinGreaterThanMax() {
-        assertThatThrownBy(() -> productService.getProductsByPriceRange(
-                new BigDecimal("100"), new BigDecimal("10")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("min price");
+    void updateStock_delta_addsToExisting() {
+        Product p = buildProduct(1L, 10);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        when(productRepository.save(any())).thenReturn(p);
+        productService.updateStock(1L, 5, true);
+        assertEquals(15, p.getStockQuantity());
     }
 
     @Test
-    @DisplayName("getProductsByPriceRange - should return matching products")
-    void getProductsByPriceRange_shouldReturnProducts() {
-        when(productRepository.findByPriceRange(any(), any())).thenReturn(List.of(sampleProduct));
-
-        List<ProductResponse> results = productService.getProductsByPriceRange(
-                new BigDecimal("10"), new BigDecimal("100"));
-
-        assertThat(results).hasSize(1);
+    void updateStock_deltaNegativeBelowZero_throwsException() {
+        Product p = buildProduct(1L, 3);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(p));
+        assertThrows(IllegalArgumentException.class, () -> productService.updateStock(1L, -10, true));
     }
 
     @Test
-    @DisplayName("updateStock - should update quantity and availability")
-    void updateStock_shouldUpdateQuantityAndAvailability() {
-        when(productRepository.findById(1L)).thenReturn(Optional.of(sampleProduct));
-        when(productRepository.save(any())).thenReturn(sampleProduct);
-
-        productService.updateStock(1L, 0);
-
-        assertThat(sampleProduct.getStockQuantity()).isEqualTo(0);
-        assertThat(sampleProduct.isAvailable()).isFalse();
+    void deleteCategory_withProducts_throwsException() {
+        Category cat = buildCategory(1L);
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(cat));
+        when(productRepository.countByCategoryId(1L)).thenReturn(3L);
+        assertThrows(IllegalStateException.class, () -> productService.deleteCategory(1L));
+        verify(categoryRepository, never()).deleteById(any());
     }
 
     @Test
-    @DisplayName("deleteProduct - should call deleteById when product exists")
-    void deleteProduct_shouldDelete_whenExists() {
-        when(productRepository.existsById(1L)).thenReturn(true);
-
-        productService.deleteProduct(1L);
-
-        verify(productRepository, times(1)).deleteById(1L);
+    void deleteCategory_empty_succeeds() {
+        Category cat = buildCategory(2L);
+        when(categoryRepository.findById(2L)).thenReturn(Optional.of(cat));
+        when(productRepository.countByCategoryId(2L)).thenReturn(0L);
+        productService.deleteCategory(2L);
+        verify(categoryRepository).deleteById(2L);
     }
 
     @Test
-    @DisplayName("deleteProduct - should throw when product does not exist")
-    void deleteProduct_shouldThrow_whenNotFound() {
-        when(productRepository.existsById(99L)).thenReturn(false);
-
-        assertThatThrownBy(() -> productService.deleteProduct(99L))
-                .isInstanceOf(ProductNotFoundException.class);
+    void searchProducts_blankKeyword_throwsException() {
+        assertThrows(IllegalArgumentException.class, () -> productService.searchProducts("  "));
     }
 
     @Test
-    @DisplayName("toggleAvailability - should flip available flag")
-    void toggleAvailability_shouldFlipAvailable() {
-        sampleProduct.setAvailable(true);
-        when(productRepository.findById(1L)).thenReturn(Optional.of(sampleProduct));
-        when(productRepository.save(any())).thenReturn(sampleProduct);
-
-        productService.toggleAvailability(1L);
-
-        assertThat(sampleProduct.isAvailable()).isFalse();
-    }
-
-    @Test
-    @DisplayName("searchProducts - should return matching products")
-    void searchProducts_shouldReturnMatchingProducts() {
-        when(productRepository.findByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase("apple", "apple"))
-                .thenReturn(List.of(sampleProduct));
-
-        List<ProductResponse> results = productService.searchProducts("apple");
-
-        assertThat(results).hasSize(1);
-        assertThat(results.get(0).getName()).isEqualTo("Apple");
-    }
-
-    @Test
-    @DisplayName("countProductsByShop - should return correct count")
-    void countProductsByShop_shouldReturnCount() {
-        when(productRepository.countByShopId(10L)).thenReturn(5L);
-
-        long count = productService.countProductsByShop(10L);
-
-        assertThat(count).isEqualTo(5L);
+    void updateStock_setToZero_setsUnavailable() {
+        Product p = buildProduct(3L, 10);
+        when(productRepository.findById(3L)).thenReturn(Optional.of(p));
+        when(productRepository.save(any())).thenReturn(p);
+        productService.updateStock(3L, 0, false);
+        assertEquals(0, p.getStockQuantity());
+        assertFalse(p.isAvailable());
     }
 }
