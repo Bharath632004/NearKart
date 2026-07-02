@@ -1,5 +1,6 @@
 package com.nearkart.userservice.service;
 
+import com.nearkart.userservice.dto.AssignRoleRequest;
 import com.nearkart.userservice.dto.ChangePasswordRequest;
 import com.nearkart.userservice.dto.UpdateProfileRequest;
 import com.nearkart.userservice.dto.UserResponse;
@@ -8,6 +9,8 @@ import com.nearkart.userservice.model.User;
 import com.nearkart.userservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,15 +25,16 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    @Cacheable(value = "users", key = "#email")
     @Transactional(readOnly = true)
     public UserResponse getProfile(String email) {
         return UserResponse.from(findByEmailOrThrow(email));
     }
 
+    @CacheEvict(value = "users", key = "#email")
     @Transactional
     public UserResponse updateProfile(String email, UpdateProfileRequest request) {
         User user = findByEmailOrThrow(email);
-
         if (request.getName() != null && !request.getName().isBlank()) {
             user.setName(request.getName());
         }
@@ -45,10 +49,10 @@ public class UserService {
         return UserResponse.from(userRepository.save(user));
     }
 
+    @CacheEvict(value = "users", key = "#email")
     @Transactional
     public void changePassword(String email, ChangePasswordRequest request) {
         User user = findByEmailOrThrow(email);
-
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             throw new InvalidPasswordException();
         }
@@ -57,6 +61,7 @@ public class UserService {
         log.info("Password changed for user: {}", email);
     }
 
+    @CacheEvict(value = "users", key = "#email")
     @Transactional
     public void deleteAccount(String email) {
         User user = findByEmailOrThrow(email);
@@ -70,12 +75,14 @@ public class UserService {
         return userRepository.findAll(pageable).map(UserResponse::from);
     }
 
+    @Cacheable(value = "users", key = "'id:' + #id")
     @Transactional(readOnly = true)
     public UserResponse getUserById(Long id) {
         return UserResponse.from(userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException(id)));
     }
 
+    @CacheEvict(value = "users", key = "'id:' + #id")
     @Transactional
     public void deactivateUser(Long id) {
         User user = userRepository.findById(id)
@@ -85,6 +92,7 @@ public class UserService {
         log.info("Admin deactivated user: id={}", id);
     }
 
+    @CacheEvict(value = "users", key = "'id:' + #id")
     @Transactional
     public void activateUser(Long id) {
         User user = userRepository.findById(id)
@@ -92,6 +100,17 @@ public class UserService {
         user.setActive(true);
         userRepository.save(user);
         log.info("Admin activated user: id={}", id);
+    }
+
+    @CacheEvict(value = "users", key = "'id:' + #id")
+    @Transactional
+    public UserResponse assignRole(Long id, AssignRoleRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+        user.setRole(User.Role.valueOf(request.role()));
+        User saved = userRepository.save(user);
+        log.info("Admin assigned role={} to userId={}", request.role(), id);
+        return UserResponse.from(saved);
     }
 
     private User findByEmailOrThrow(String email) {
