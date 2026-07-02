@@ -1,13 +1,20 @@
 package com.nearkart.auth.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+/**
+ * Request DTO for OTP verification.
+ */
 @Data
 public class OtpVerifyRequest {
-    @NotBlank
-    private String identifier;
-    @NotBlank @Size(min = 6, max = 6)
+
+    @NotBlank(message = "Email is required")
+    private String email;
+
+    @NotBlank(message = "Phone is required")
+    private String phone;
+
+    @NotBlank(message = "OTP is required")
     private String otp;
 }
