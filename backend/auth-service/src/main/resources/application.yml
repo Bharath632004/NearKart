@@ -15,6 +15,18 @@ spring:
     properties:
       hibernate:
         format_sql: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
 
 eureka:
   client:
@@ -25,18 +37,25 @@ eureka:
 jwt:
   secret: ${JWT_SECRET:TmVhcktBUlRTdXBlclNlY3JldEtleTIwMjZTZWN1cmVTdHJpbmc=}
   expiry-ms: 900000
+  access-token-expiry: 900000
   refresh-token-expiry: 604800000
 
 app:
   otp:
     expiry-minutes: 5
     length: 6
+  password-reset:
+    expiry-minutes: 15
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
 
 logging:
   level:
