@@ -1,15 +1,27 @@
+package in.nearkart.delivery.repository;
+
 import in.nearkart.delivery.entity.DeliveryEarning;
 import in.nearkart.delivery.entity.DeliveryPartner;
-import in.nearkart.delivery.dto.response.DeliveryEarningResponse;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
-public List<DeliveryEarningResponse> getEarningsForPartner(DeliveryPartner partner, Pageable pageable) {
-    List<DeliveryEarning> earnings =
-            earningRepository.findByPartnerOrderByCreatedAtDesc(partner, pageable);
+@Repository
+public interface DeliveryEarningRepository extends JpaRepository<DeliveryEarning, UUID> {
 
-    return earnings.stream()
-            .map(this::toResponse)
-            .toList();   // or .collect(Collectors.toList())
+    /** Called at DeliveryEarningServiceImpl line 34 */
+    List<DeliveryEarning> findByPartnerOrderByCreatedAtDesc(DeliveryPartner partner, Pageable pageable);
+
+    /** Called at DeliveryEarningServiceImpl line 42 */
+    @Query("SELECT SUM(e.amount) FROM DeliveryEarning e WHERE e.partner = :partner AND e.settled = false")
+    BigDecimal sumUnsettledByPartner(@Param("partner") DeliveryPartner partner);
+
+    /** Called at DeliveryEarningServiceImpl line 49 */
+    List<DeliveryEarning> findByPartnerAndSettled(DeliveryPartner partner, boolean settled);
 }
