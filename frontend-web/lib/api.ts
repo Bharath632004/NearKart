@@ -34,14 +34,14 @@ export const authApi = {
     api.post('/api/v1/auth/reset-password', { token, password }),
 };
 
-// ─── Users (/api/users, /api/v1/users) ───────────────────────────────────────
+// ─── Users (/api/v1/users) ────────────────────────────────────────────────────
+// Note: getAll() removed — use adminApi.getUsers() for admin access
 export const usersApi = {
-  getAll: () => api.get('/api/users'),
   getMe: () => api.get('/api/v1/users/me'),
   updateMe: (data: object) => api.put('/api/v1/users/me', data),
-  getAddresses: () => api.get('/api/users/me/addresses'),
-  addAddress: (data: object) => api.post('/api/users/me/addresses', data),
-  deleteAddress: (id: number) => api.delete(`/api/users/me/addresses/${id}`),
+  getAddresses: () => api.get('/api/v1/users/me/addresses'),
+  addAddress: (data: object) => api.post('/api/v1/users/me/addresses', data),
+  deleteAddress: (id: number) => api.delete(`/api/v1/users/me/addresses/${id}`),
 };
 
 // ─── Products (/api/products) ─────────────────────────────────────────────────

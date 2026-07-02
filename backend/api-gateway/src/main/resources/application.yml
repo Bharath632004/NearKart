@@ -39,8 +39,8 @@ spring:
                 name: X-Service-Name
                 value: auth-service
 
-        # ─── User Service (public profile) ───────────────────────────────────
-        - id: user-service-public
+        # ─── User Service (protected) ─────────────────────────────────────────
+        - id: user-service-protected
           uri: lb://user-service
           predicates:
             - Path=/api/users/**
