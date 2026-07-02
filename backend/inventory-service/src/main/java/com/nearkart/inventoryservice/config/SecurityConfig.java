@@ -26,9 +26,13 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.GET, "/api/inventory/*/shop/*").permitAll()
+                        // Public: stock availability check (used by product/cart pages)
                         .requestMatchers(HttpMethod.POST, "/api/inventory/check").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
+                        // Public: browse inventory for a specific product in a shop
+                        .requestMatchers(HttpMethod.GET, "/api/inventory/product/*/shop/*").permitAll()
+                        // Public: list all inventory for a shop (storefront)
+                        .requestMatchers(HttpMethod.GET, "/api/inventory/shop/*").permitAll()
+                        .requestMatchers("/actuator/**", "/api-docs/**", "/swagger-ui/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)

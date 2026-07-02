@@ -1,44 +1,60 @@
 server:
-  port: 8085
+  port: 8087
 
 spring:
   application:
     name: inventory-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/nearkart_inventory
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${DB_NAME:nearkart_inventory}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASS:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://${EUREKA_HOST:localhost}:8761/eureka/
     fetch-registry: true
     register-with-eureka: true
   instance:
     prefer-ip-address: true
 
 jwt:
-  secret: ${JWT_SECRET:bXlTdXBlclNlY3JldEtleUZvck5lYXJLYXJ0QXBwbGljYXRpb24xMjM0NTY=}
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+
+gateway:
+  secret: ${GATEWAY_SECRET:}
+
+inventory:
+  stock:
+    low-threshold-default: ${INVENTORY_LOW_THRESHOLD:10}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: always
 
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
 logging:
   level:
-    com.nearkart.inventoryservice: DEBUG
+    com.nearkart.inventoryservice: INFO

@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "stock_transactions")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -34,7 +35,7 @@ public class StockTransaction {
     private Integer quantityBefore;
     private Integer quantityAfter;
 
-    private String referenceId;  // order id or any external reference
+    private String referenceId;
     private String notes;
 
     private String performedBy;

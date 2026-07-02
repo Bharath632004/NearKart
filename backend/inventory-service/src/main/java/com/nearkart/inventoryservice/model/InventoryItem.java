@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "inventory_items",
         uniqueConstraints = @UniqueConstraint(columnNames = {"product_id", "shop_id"}))
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -37,6 +38,7 @@ public class InventoryItem {
     private String productName;
 
     @NotBlank
+    @Column(nullable = false, unique = true)
     private String sku;
 
     @NotNull
@@ -45,7 +47,8 @@ public class InventoryItem {
     private Integer quantityAvailable;
 
     @Min(0)
-    private Integer lowStockThreshold = 10;
+    @Column(nullable = false)
+    private Integer lowStockThreshold;
 
     @NotNull
     @Column(nullable = false)

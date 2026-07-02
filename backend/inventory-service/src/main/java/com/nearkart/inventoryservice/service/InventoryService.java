@@ -1,14 +1,15 @@
 package com.nearkart.inventoryservice.service;
 
 import com.nearkart.inventoryservice.dto.*;
+import com.nearkart.inventoryservice.exception.DuplicateInventoryException;
 import com.nearkart.inventoryservice.exception.InsufficientStockException;
 import com.nearkart.inventoryservice.exception.InventoryNotFoundException;
-import com.nearkart.inventoryservice.exception.DuplicateInventoryException;
 import com.nearkart.inventoryservice.model.*;
 import com.nearkart.inventoryservice.repository.InventoryItemRepository;
 import com.nearkart.inventoryservice.repository.StockTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -25,12 +26,22 @@ public class InventoryService {
     private final InventoryItemRepository inventoryItemRepository;
     private final StockTransactionRepository stockTransactionRepository;
 
+    @Value("${inventory.stock.low-threshold-default:10}")
+    private int defaultLowStockThreshold;
+
+    // ── Create ─────────────────────────────────────────────────────────────────
+
     @Transactional
     public InventoryItemResponse createInventoryItem(InventoryItemRequest request) {
         if (inventoryItemRepository.existsByProductIdAndShopId(request.getProductId(), request.getShopId())) {
             throw new DuplicateInventoryException(
-                    "Inventory already exists for product " + request.getProductId() + " in shop " + request.getShopId());
+                    "Inventory already exists for product " + request.getProductId()
+                    + " in shop " + request.getShopId());
         }
+
+        int threshold = request.getLowStockThreshold() != null
+                ? request.getLowStockThreshold()
+                : defaultLowStockThreshold;
 
         InventoryItem item = InventoryItem.builder()
                 .productId(request.getProductId())
@@ -38,21 +49,25 @@ public class InventoryService {
                 .productName(request.getProductName())
                 .sku(request.getSku())
                 .quantityAvailable(request.getQuantityAvailable())
-                .lowStockThreshold(request.getLowStockThreshold() != null ? request.getLowStockThreshold() : 10)
+                .lowStockThreshold(threshold)
                 .price(request.getPrice())
                 .status(InventoryStatus.ACTIVE)
                 .build();
 
         InventoryItem saved = inventoryItemRepository.save(item);
-        log.info("Created inventory item id={} for product={} shop={}", saved.getId(), saved.getProductId(), saved.getShopId());
+        log.info("Created inventory item id={} for product={} shop={}",
+                saved.getId(), saved.getProductId(), saved.getShopId());
 
-        // Record initial stock transaction
         if (request.getQuantityAvailable() > 0) {
-            recordTransaction(saved.getId(), TransactionType.STOCK_IN, request.getQuantityAvailable(), 0, request.getQuantityAvailable(), null, "Initial stock");
+            recordTransaction(saved.getId(), TransactionType.STOCK_IN,
+                    request.getQuantityAvailable(), 0, request.getQuantityAvailable(),
+                    null, "Initial stock");
         }
 
         return mapToResponse(saved);
     }
+
+    // ── Read ───────────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public InventoryItemResponse getInventoryItemById(Long id) {
@@ -79,13 +94,20 @@ public class InventoryService {
                 .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    /**
+     * Returns only ACTIVE items that are below their low-stock threshold
+     * and still have quantity > 0.  OUT_OF_STOCK items are excluded because
+     * they already trigger a separate alert path.
+     */
     @Transactional(readOnly = true)
     public List<InventoryItemResponse> getLowStockItems(Long shopId) {
         List<InventoryItem> items = (shopId != null)
-                ? inventoryItemRepository.findLowStockItemsByShop(shopId)
-                : inventoryItemRepository.findAllLowStockItems();
+                ? inventoryItemRepository.findLowStockActiveItemsByShop(shopId)
+                : inventoryItemRepository.findAllLowStockActiveItems();
         return items.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
+
+    // ── Stock operations ───────────────────────────────────────────────────────
 
     @Transactional
     public InventoryItemResponse updateStock(Long id, StockUpdateRequest request) {
@@ -93,18 +115,20 @@ public class InventoryService {
         int before = item.getQuantityAvailable();
 
         switch (request.getTransactionType()) {
-            case STOCK_IN, RETURNED, RELEASED -> item.setQuantityAvailable(before + request.getQuantity());
+            case STOCK_IN, RETURNED, RELEASED ->
+                    item.setQuantityAvailable(before + request.getQuantity());
             case STOCK_OUT, RESERVED -> {
                 if (before < request.getQuantity()) {
                     throw new InsufficientStockException(
-                            "Insufficient stock. Available: " + before + ", Requested: " + request.getQuantity());
+                            "Insufficient stock. Available: " + before
+                            + ", Requested: " + request.getQuantity());
                 }
                 item.setQuantityAvailable(before - request.getQuantity());
             }
             case ADJUSTMENT -> item.setQuantityAvailable(request.getQuantity());
         }
 
-        // Auto-update status based on quantity
+        // Auto-update status based on resulting quantity
         if (item.getQuantityAvailable() == 0) {
             item.setStatus(InventoryStatus.OUT_OF_STOCK);
         } else if (item.getStatus() == InventoryStatus.OUT_OF_STOCK) {
@@ -112,20 +136,32 @@ public class InventoryService {
         }
 
         InventoryItem updated = inventoryItemRepository.save(item);
-        recordTransaction(id, request.getTransactionType(), request.getQuantity(), before, updated.getQuantityAvailable(),
+        recordTransaction(id, request.getTransactionType(), request.getQuantity(),
+                before, updated.getQuantityAvailable(),
                 request.getReferenceId(), request.getNotes());
 
         log.info("Stock updated for item id={}: {} -> {}", id, before, updated.getQuantityAvailable());
         return mapToResponse(updated);
     }
 
+    // ── Update ─────────────────────────────────────────────────────────────────
+
     @Transactional
     public InventoryItemResponse updateInventoryDetails(Long id, InventoryItemRequest request) {
         InventoryItem item = findItemById(id);
-        item.setProductName(request.getProductName());
-        item.setSku(request.getSku());
-        item.setPrice(request.getPrice());
-        item.setLowStockThreshold(request.getLowStockThreshold());
+
+        // Guard against SKU collision with a different item
+        if (request.getSku() != null
+                && !request.getSku().equals(item.getSku())
+                && inventoryItemRepository.existsBySkuAndIdNot(request.getSku(), id)) {
+            throw new DuplicateInventoryException("SKU '" + request.getSku() + "' is already in use");
+        }
+
+        if (request.getProductName() != null) item.setProductName(request.getProductName());
+        if (request.getSku() != null)         item.setSku(request.getSku());
+        if (request.getPrice() != null)       item.setPrice(request.getPrice());
+        if (request.getLowStockThreshold() != null) item.setLowStockThreshold(request.getLowStockThreshold());
+
         return mapToResponse(inventoryItemRepository.save(item));
     }
 
@@ -136,6 +172,8 @@ public class InventoryService {
         return mapToResponse(inventoryItemRepository.save(item));
     }
 
+    // ── Delete ─────────────────────────────────────────────────────────────────
+
     @Transactional
     public void deleteInventoryItem(Long id) {
         InventoryItem item = findItemById(id);
@@ -143,9 +181,12 @@ public class InventoryService {
         log.info("Deleted inventory item id={}", id);
     }
 
+    // ── Stock check ────────────────────────────────────────────────────────────
+
     @Transactional(readOnly = true)
     public StockCheckResponse checkStock(StockCheckRequest request) {
-        return inventoryItemRepository.findByProductIdAndShopId(request.getProductId(), request.getShopId())
+        return inventoryItemRepository
+                .findByProductIdAndShopId(request.getProductId(), request.getShopId())
                 .map(item -> {
                     boolean available = item.getStatus() == InventoryStatus.ACTIVE
                             && item.getQuantityAvailable() >= request.getRequiredQuantity();
@@ -168,22 +209,26 @@ public class InventoryService {
                         .build());
     }
 
+    // ── Transactions ───────────────────────────────────────────────────────────
+
     @Transactional(readOnly = true)
     public List<StockTransactionResponse> getTransactionHistory(Long inventoryItemId) {
-        return stockTransactionRepository.findByInventoryItemIdOrderByCreatedAtDesc(inventoryItemId)
+        return stockTransactionRepository
+                .findByInventoryItemIdOrderByCreatedAtDesc(inventoryItemId)
                 .stream().map(this::mapTransactionToResponse).collect(Collectors.toList());
     }
 
-    // ---- Private helpers ----
+    // ── Private helpers ────────────────────────────────────────────────────────
 
     private InventoryItem findItemById(Long id) {
         return inventoryItemRepository.findById(id)
-                .orElseThrow(() -> new InventoryNotFoundException("Inventory item not found with id: " + id));
+                .orElseThrow(() -> new InventoryNotFoundException(
+                        "Inventory item not found with id: " + id));
     }
 
-    private void recordTransaction(Long itemId, TransactionType type, int qty, int before, int after,
+    private void recordTransaction(Long itemId, TransactionType type, int qty,
+                                   int before, int after,
                                    String referenceId, String notes) {
-        String user = getCurrentUsername();
         StockTransaction tx = StockTransaction.builder()
                 .inventoryItemId(itemId)
                 .transactionType(type)
@@ -192,7 +237,7 @@ public class InventoryService {
                 .quantityAfter(after)
                 .referenceId(referenceId)
                 .notes(notes)
-                .performedBy(user)
+                .performedBy(getCurrentUsername())
                 .build();
         stockTransactionRepository.save(tx);
     }
@@ -213,7 +258,9 @@ public class InventoryService {
                 .lowStockThreshold(item.getLowStockThreshold())
                 .price(item.getPrice())
                 .status(item.getStatus())
-                .isLowStock(item.getQuantityAvailable() <= item.getLowStockThreshold())
+                .isLowStock(item.getQuantityAvailable() != null
+                        && item.getLowStockThreshold() != null
+                        && item.getQuantityAvailable() <= item.getLowStockThreshold())
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
