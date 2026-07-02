@@ -1,8 +1,7 @@
 package com.nearkart.orderservice.service;
 
 import com.nearkart.orderservice.dto.*;
-import com.nearkart.orderservice.exception.OrderCannotBeCancelledException;
-import com.nearkart.orderservice.exception.OrderNotFoundException;
+import com.nearkart.orderservice.exception.*;
 import com.nearkart.orderservice.model.*;
 import com.nearkart.orderservice.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
@@ -59,12 +58,18 @@ public class OrderServiceImpl implements OrderService {
         }).collect(Collectors.toList());
 
         order.setItems(items);
-        order.setTotalAmount(
-            items.stream().map(OrderItem::getTotalPrice).reduce(BigDecimal.ZERO, BigDecimal::add)
-        );
+        BigDecimal total = items.stream()
+                .map(OrderItem::getTotalPrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (total.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Order total must be greater than zero");
+        }
+
+        order.setTotalAmount(total);
 
         Order saved = orderRepository.save(order);
-        log.info("Order placed: id={}, customer={}, shop={}", saved.getId(), saved.getCustomerId(), saved.getShopId());
+        log.info("Order placed: id={}, customer={}, shop={}, total={}", saved.getId(), saved.getCustomerId(), saved.getShopId(), saved.getTotalAmount());
         return toResponse(saved);
     }
 
@@ -118,6 +123,18 @@ public class OrderServiceImpl implements OrderService {
                 .map(this::toResponse).collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public long countOrdersByCustomer(Long customerId) {
+        return orderRepository.countByCustomerId(customerId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countOrdersByShop(Long shopId) {
+        return orderRepository.countByShopId(shopId);
+    }
+
     // ------------------------------------------------------------------ status update
 
     @Override
@@ -126,6 +143,9 @@ public class OrderServiceImpl implements OrderService {
         Order order = findOrThrow(id);
         OrderStateMachine.validateTransition(order.getStatus(), newStatus);
         order.setStatus(newStatus);
+        if (newStatus == OrderStatus.DELIVERED) {
+            order.setDeliveredAt(LocalDateTime.now());
+        }
         log.info("Order {} status updated to {}", id, newStatus);
         return toResponse(orderRepository.save(order));
     }
@@ -160,13 +180,14 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse returnOrder(Long id, String reason) {
         Order order = findOrThrow(id);
         if (!OrderStateMachine.canReturn(order.getStatus())) {
-            throw new OrderCannotBeCancelledException(
+            throw new OrderCannotBeReturnedException(
                 "Order " + id + " is not eligible for return — status: " + order.getStatus()
             );
         }
-        long hoursSinceDelivery = Duration.between(order.getUpdatedAt(), LocalDateTime.now()).toHours();
+        LocalDateTime deliveryTime = order.getDeliveredAt() != null ? order.getDeliveredAt() : order.getUpdatedAt();
+        long hoursSinceDelivery = Duration.between(deliveryTime, LocalDateTime.now()).toHours();
         if (hoursSinceDelivery > returnWindowHours) {
-            throw new OrderCannotBeCancelledException(
+            throw new OrderCannotBeReturnedException(
                 "Return window of " + returnWindowHours + " hours has passed"
             );
         }

@@ -10,7 +10,7 @@ public class OrderStateMachine {
     private static final Map<OrderStatus, Set<OrderStatus>> VALID_TRANSITIONS = Map.of(
         OrderStatus.PENDING,           Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
         OrderStatus.CONFIRMED,         Set.of(OrderStatus.PREPARING, OrderStatus.CANCELLED),
-        OrderStatus.PREPARING,         Set.of(OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELLED),
+        OrderStatus.PREPARING,         Set.of(OrderStatus.OUT_FOR_DELIVERY),
         OrderStatus.OUT_FOR_DELIVERY,  Set.of(OrderStatus.DELIVERED),
         OrderStatus.DELIVERED,         Set.of(OrderStatus.RETURNED),
         OrderStatus.RETURNED,          Set.of(OrderStatus.REFUND_INITIATED),

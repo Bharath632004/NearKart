@@ -26,6 +26,7 @@ public class Order {
     private String paymentId;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private OrderStatus status = OrderStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
@@ -39,6 +40,7 @@ public class Order {
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
+    @Column(nullable = false)
     private BigDecimal totalAmount;
 
     private String deliveryAddress;
@@ -46,7 +48,11 @@ public class Order {
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
     private LocalDateTime updatedAt;
+
+    /** Set when status transitions to DELIVERED — used for return-window enforcement */
+    private LocalDateTime deliveredAt;
 
     @PrePersist
     protected void onCreate() {
