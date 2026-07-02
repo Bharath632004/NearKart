@@ -27,6 +27,6 @@ public interface SettlementRepository extends JpaRepository<Settlement, UUID> {
     @Query("SELECT COALESCE(SUM(s.netAmount), 0) FROM Settlement s WHERE s.status = 'COMPLETED'")
     BigDecimal getTotalCompletedSettlements();
 
-    @Query("SELECT COALESCE(SUM(s.totalOrders), 0) FROM Settlement s WHERE s.merchant.id = :merchantId")
-    long getTotalOrdersByMerchant(@Param("merchantId") UUID merchantId);
+    @Query("SELECT COALESCE(SUM(s.totalOrders), 0L) FROM Settlement s WHERE s.merchant.id = :merchantId")
+    Long getTotalOrdersByMerchant(@Param("merchantId") UUID merchantId);
 }
