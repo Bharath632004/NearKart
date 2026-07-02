@@ -9,6 +9,7 @@ import in.nearkart.notification.entity.*;
 import in.nearkart.notification.repository.NotificationLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -21,9 +22,11 @@ public class SmsService {
 
     private final TwilioConfig twilioConfig;
     private final NotificationLogRepository logRepository;
+    private final ApplicationContext applicationContext;
 
     @Async
     public NotificationResponse sendSms(SmsRequest request) {
+        // Save PENDING log before attempting send
         NotificationLog logEntry = NotificationLog.builder()
                 .userId(request.getUserId())
                 .channel(NotificationChannel.SMS)
@@ -58,19 +61,20 @@ public class SmsService {
             logEntry.setStatus(NotificationStatus.FAILED);
             logEntry.setErrorMessage(e.getMessage());
             logRepository.save(logEntry);
-            return NotificationResponse.builder().success(false).message(e.getMessage()).logId(logEntry.getId()).build();
+            return NotificationResponse.builder()
+                    .success(false).message(e.getMessage()).logId(logEntry.getId()).build();
         }
     }
 
     /**
-     * Convenience overload used by NotificationServiceImpl.
-     * Wraps the two-arg call into a SmsRequest.
+     * Convenience overload — routes through the Spring proxy so @Async is honoured.
+     * Direct this-call would bypass AOP proxy and block the caller thread.
      */
     public NotificationResponse sendSms(String toPhone, String messageBody) {
         SmsRequest req = new SmsRequest();
         req.setTo(toPhone);
         req.setMessage(messageBody);
-        return sendSms(req);
+        return applicationContext.getBean(SmsService.class).sendSms(req);
     }
 
     private NotificationType resolveType(String type) {

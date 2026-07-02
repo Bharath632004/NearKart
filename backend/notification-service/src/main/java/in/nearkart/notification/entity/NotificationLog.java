@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "notification_logs")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder

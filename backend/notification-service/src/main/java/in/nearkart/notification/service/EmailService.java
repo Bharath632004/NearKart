@@ -8,6 +8,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -25,6 +26,7 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
     private final NotificationLogRepository logRepository;
+    private final ApplicationContext applicationContext;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -34,6 +36,7 @@ public class EmailService {
 
     @Async
     public NotificationResponse sendEmail(EmailRequest request) {
+        // Save PENDING log before attempting send
         NotificationLog logEntry = NotificationLog.builder()
                 .userId(request.getUserId())
                 .channel(NotificationChannel.EMAIL)
@@ -69,25 +72,29 @@ public class EmailService {
             logRepository.save(logEntry);
 
             log.info("Email sent to {} subject={}", request.getTo(), request.getSubject());
-            return NotificationResponse.builder().success(true).message("Email sent").logId(logEntry.getId()).build();
+            return NotificationResponse.builder()
+                    .success(true).message("Email sent").logId(logEntry.getId()).build();
         } catch (Exception e) {
             log.error("Email failed to {}: {}", request.getTo(), e.getMessage());
             logEntry.setStatus(NotificationStatus.FAILED);
             logEntry.setErrorMessage(e.getMessage());
             logRepository.save(logEntry);
-            return NotificationResponse.builder().success(false).message(e.getMessage()).logId(logEntry.getId()).build();
+            return NotificationResponse.builder()
+                    .success(false).message(e.getMessage()).logId(logEntry.getId()).build();
         }
     }
 
     /**
-     * Convenience overload used by NotificationServiceImpl.
+     * Convenience overload — routes through the Spring proxy so @Async is honoured.
+     * Direct this-call would bypass the AOP proxy and run synchronously.
      */
     public NotificationResponse sendPlainEmail(String toEmail, String subject, String body) {
         EmailRequest req = new EmailRequest();
         req.setTo(toEmail);
         req.setSubject(subject);
         req.setBody(body);
-        return sendEmail(req);
+        // Use Spring proxy bean to preserve @Async behaviour
+        return applicationContext.getBean(EmailService.class).sendEmail(req);
     }
 
     private NotificationType resolveType(String type) {

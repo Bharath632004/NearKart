@@ -10,7 +10,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "device_tokens")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -20,14 +21,13 @@ public class DeviceToken {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Stored as String (legacy), but we also keep a UUID-typed transient for service layer
     @Column(name = "user_id", nullable = false)
     private String userId;
 
     @Column(name = "fcm_token", nullable = false, unique = true, length = 500)
     private String fcmToken;
 
-    // Alias field 'token' used by FcmService and PushNotificationService
+    /** Alias used by FcmService / PushNotificationService */
     @Transient
     public String getToken() { return fcmToken; }
 
@@ -41,7 +41,7 @@ public class DeviceToken {
     @Builder.Default
     private boolean active = true;
 
-    // Boolean alias used by NotificationServiceImpl builder (.isActive(true))
+    /** Boolean alias used by builder-style callers (.isActive(true)) */
     @Transient
     public Boolean getIsActive() { return active; }
 
@@ -53,12 +53,12 @@ public class DeviceToken {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Setter used by NotificationServiceImpl
+    /** Setter alias used by NotificationServiceImpl */
     public void setIsActive(Boolean isActive) {
         this.active = Boolean.TRUE.equals(isActive);
     }
 
-    // Helper to set userId from UUID
+    /** Convenience setter accepting UUID */
     public void setUserId(UUID uuid) {
         this.userId = uuid != null ? uuid.toString() : null;
     }

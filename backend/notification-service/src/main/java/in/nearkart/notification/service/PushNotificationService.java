@@ -39,10 +39,25 @@ public class PushNotificationService {
         }
 
         if (tokens.isEmpty()) {
-            return NotificationResponse.builder().success(false).message("No device tokens found").build();
+            log.warn("sendPush: no device tokens found for userId={}", request.getUserId());
+            return NotificationResponse.builder()
+                    .success(false).message("No device tokens found").build();
         }
 
-        // Use fully-qualified FCM Notification to avoid clash with entity Notification
+        String userId = request.getUserId() != null ? request.getUserId() : "unknown";
+
+        // Save PENDING log BEFORE sending for complete audit trail
+        NotificationLog logEntry = NotificationLog.builder()
+                .userId(userId)
+                .channel(NotificationChannel.PUSH)
+                .type(resolveType(request.getNotificationType()))
+                .recipient(String.join(",", tokens))
+                .subject(request.getTitle())
+                .message(request.getBody())
+                .status(NotificationStatus.PENDING)
+                .build();
+        logRepository.save(logEntry);
+
         com.google.firebase.messaging.Notification fcmNotification =
                 com.google.firebase.messaging.Notification.builder()
                         .setTitle(request.getTitle())
@@ -62,41 +77,40 @@ public class PushNotificationService {
             BatchResponse response = firebaseMessaging.sendEach(messages);
             log.info("FCM batch: {}/{} success", response.getSuccessCount(), messages.size());
 
+            // Deactivate invalid/unregistered tokens
             for (int i = 0; i < response.getResponses().size(); i++) {
                 SendResponse sr = response.getResponses().get(i);
-                if (!sr.isSuccessful()) {
+                if (!sr.isSuccessful() && sr.getException() != null) {
                     String code = sr.getException().getMessagingErrorCode() != null
                             ? sr.getException().getMessagingErrorCode().name() : "";
                     if (code.equals("UNREGISTERED") || code.equals("INVALID_ARGUMENT")) {
-                        deviceTokenRepository.findByFcmToken(tokens.get(i)).ifPresent(dt -> {
+                        final String badToken = tokens.get(i);
+                        deviceTokenRepository.findByFcmToken(badToken).ifPresent(dt -> {
                             dt.setActive(false);
                             deviceTokenRepository.save(dt);
+                            log.info("Deactivated stale FCM token for userId={}", dt.getUserId());
                         });
                     }
                 }
             }
 
-            String userId = request.getUserId() != null ? request.getUserId() : "unknown";
-            NotificationLog logEntry = NotificationLog.builder()
-                    .userId(userId)
-                    .channel(NotificationChannel.PUSH)
-                    .type(resolveType(request.getNotificationType()))
-                    .recipient(String.join(",", tokens))
-                    .subject(request.getTitle())
-                    .message(request.getBody())
-                    .status(response.getSuccessCount() > 0 ? NotificationStatus.SENT : NotificationStatus.FAILED)
-                    .deliveredAt(LocalDateTime.now())
-                    .build();
+            boolean anySuccess = response.getSuccessCount() > 0;
+            logEntry.setStatus(anySuccess ? NotificationStatus.SENT : NotificationStatus.FAILED);
+            logEntry.setDeliveredAt(anySuccess ? LocalDateTime.now() : null);
             logRepository.save(logEntry);
 
             return NotificationResponse.builder()
-                    .success(response.getSuccessCount() > 0)
+                    .success(anySuccess)
                     .message(response.getSuccessCount() + " of " + messages.size() + " delivered")
                     .logId(logEntry.getId())
                     .build();
         } catch (FirebaseMessagingException e) {
             log.error("FCM error: {}", e.getMessage());
-            return NotificationResponse.builder().success(false).message(e.getMessage()).build();
+            logEntry.setStatus(NotificationStatus.FAILED);
+            logEntry.setErrorMessage(e.getMessage());
+            logRepository.save(logEntry);
+            return NotificationResponse.builder()
+                    .success(false).message(e.getMessage()).logId(logEntry.getId()).build();
         }
     }
 
