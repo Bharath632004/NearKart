@@ -85,6 +85,15 @@ const MOCK_PARTNERS = ["Arun Kumar", "Ramu Reddy", "Vijay S"];
 const STATUS_LIST = ["pending", "confirmed", "out_for_delivery", "delivered", "cancelled"];
 const PAGE_SIZE = 5;
 
+// Status color map used as fallback if Badge component doesn't handle type styling
+const STATUS_COLORS = {
+  pending: "bg-yellow-100 text-yellow-700",
+  confirmed: "bg-blue-100 text-blue-700",
+  out_for_delivery: "bg-indigo-100 text-indigo-700",
+  delivered: "bg-green-100 text-green-700",
+  cancelled: "bg-red-100 text-red-700",
+};
+
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -115,6 +124,11 @@ export default function Orders() {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
+
   const filtered = useMemo(() => {
     return orders.filter((o) => {
       const matchFilter = filter === "all" || o.status === filter;
@@ -127,13 +141,11 @@ export default function Orders() {
   }, [orders, filter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
+  // Clamp current page so it never exceeds totalPages
+  const safePage = Math.min(Math.max(1, page), totalPages);
   const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  useEffect(() => {
-    setPage(1);
-  }, [filter, search]);
-
+  // Sync page state if it goes out of range (e.g. after deleting orders)
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
@@ -219,6 +231,7 @@ export default function Orders() {
         <ExportButton data={filtered} filename="orders" label="Export CSV" />
       </div>
 
+      {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {["all", "pending", "confirmed", "out_for_delivery", "delivered"].map((s) => (
           <button
@@ -262,102 +275,113 @@ export default function Orders() {
                 ))}
               </tr>
             </thead>
-
-            {loading ? (
-              <SkeletonTable rows={5} cols={8} />
-            ) : (
-              <tbody>
-                {paginated.map((o) => (
-                  <tr
-                    key={o._id}
-                    className={"border-t hover:bg-gray-50" + (o.escalated ? " bg-red-50" : "")}
-                  >
-                    <td
-                      className="px-4 py-3 font-mono text-xs cursor-pointer text-indigo-600 hover:underline"
-                      onClick={() => setSelectedOrder(o)}
+            {/* tbody must always be present for valid HTML table structure */}
+            <tbody>
+              {loading ? (
+                <SkeletonTable rows={5} cols={8} />
+              ) : (
+                <>
+                  {paginated.map((o) => (
+                    <tr
+                      key={o._id}
+                      className={"border-t hover:bg-gray-50" + (o.escalated ? " bg-red-50" : "")}
                     >
-                      #{o._id}
-                    </td>
-                    <td className="px-4 py-3 font-medium">{o.customer}</td>
-                    <td className="px-4 py-3">{o.merchant}</td>
-                    <td className="px-4 py-3">
-                      {o.deliveryPartner || <span className="text-gray-400 italic">Unassigned</span>}
-                    </td>
-                    <td className="px-4 py-3 font-semibold">₹{o.amount}</td>
-                    <td className="px-4 py-3 text-gray-500">{o.date}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
-                        <Badge label={o.status.replace(/_/g, " ")} type={o.status} />
-                        {o.escalated && <span className="text-xs text-red-600 font-semibold">🚨 Escalated</span>}
-                        {o.refund && <span className="text-xs text-green-600 font-semibold">↩ Refunded</span>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        <select
-                          className="border rounded px-1 py-1 text-xs"
-                          value={o.status}
-                          onChange={(e) => updateStatus(o._id, e.target.value)}
-                        >
-                          {STATUS_LIST.map((s) => (
-                            <option key={s} value={s}>
-                              {s.replace(/_/g, " ")}
-                            </option>
-                          ))}
-                        </select>
-
-                        <button
-                          onClick={() => {
-                            setAssignModal(o);
-                            setAssignPartner(o.deliveryPartner || "");
-                          }}
-                          className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs"
-                        >
-                          Assign
-                        </button>
-
-                        <button
-                          onClick={() => setRefundModal(o)}
-                          className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs"
-                        >
-                          Refund
-                        </button>
-
-                        <button
-                          onClick={() => generateInvoice(o)}
-                          className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
-                        >
-                          Invoice
-                        </button>
-
-                        {!o.escalated && (
-                          <button
-                            onClick={() => escalate(o._id)}
-                            className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs"
+                      <td
+                        className="px-4 py-3 font-mono text-xs cursor-pointer text-indigo-600 hover:underline"
+                        onClick={() => setSelectedOrder(o)}
+                      >
+                        #{o._id}
+                      </td>
+                      <td className="px-4 py-3 font-medium">{o.customer}</td>
+                      <td className="px-4 py-3">{o.merchant}</td>
+                      <td className="px-4 py-3">
+                        {o.deliveryPartner || <span className="text-gray-400 italic">Unassigned</span>}
+                      </td>
+                      <td className="px-4 py-3 font-semibold">₹{o.amount}</td>
+                      <td className="px-4 py-3 text-gray-500">{o.date}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <Badge
+                            label={o.status.replace(/_/g, " ")}
+                            type={o.status}
+                            className={STATUS_COLORS[o.status] || ""}
+                          />
+                          {o.escalated && (
+                            <span className="text-xs text-red-600 font-semibold">🚨 Escalated</span>
+                          )}
+                          {o.refund && (
+                            <span className="text-xs text-green-600 font-semibold">↩ Refunded</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          <select
+                            className="border rounded px-1 py-1 text-xs"
+                            value={o.status}
+                            onChange={(e) => updateStatus(o._id, e.target.value)}
                           >
-                            Escalate
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                            {STATUS_LIST.map((s) => (
+                              <option key={s} value={s}>
+                                {s.replace(/_/g, " ")}
+                              </option>
+                            ))}
+                          </select>
 
-                {paginated.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="text-center py-8 text-gray-400">
-                      No orders found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            )}
+                          <button
+                            onClick={() => {
+                              setAssignModal(o);
+                              setAssignPartner(o.deliveryPartner || "");
+                            }}
+                            className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs"
+                          >
+                            Assign
+                          </button>
+
+                          <button
+                            onClick={() => setRefundModal(o)}
+                            className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs"
+                          >
+                            Refund
+                          </button>
+
+                          <button
+                            onClick={() => generateInvoice(o)}
+                            className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                          >
+                            Invoice
+                          </button>
+
+                          {!o.escalated && (
+                            <button
+                              onClick={() => escalate(o._id)}
+                              className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs"
+                            >
+                              Escalate
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {paginated.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="text-center py-8 text-gray-400">
+                        No orders found.
+                      </td>
+                    </tr>
+                  )}
+                </>
+              )}
+            </tbody>
           </table>
         </div>
 
         <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
+      {/* Order Timeline Modal */}
       <Modal
         open={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
@@ -397,6 +421,7 @@ export default function Orders() {
         )}
       </Modal>
 
+      {/* Assign Delivery Partner Modal */}
       <Modal open={!!assignModal} onClose={() => setAssignModal(null)} title="Assign Delivery Partner">
         <div className="space-y-4">
           <select
@@ -428,6 +453,7 @@ export default function Orders() {
         </div>
       </Modal>
 
+      {/* Refund Modal */}
       <Modal open={!!refundModal} onClose={() => setRefundModal(null)} title="Approve Refund">
         {refundModal && (
           <div className="space-y-4">
