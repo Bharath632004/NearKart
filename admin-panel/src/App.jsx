@@ -14,6 +14,12 @@ import Payments from "./pages/admin/Payments";
 import Coupons from "./pages/admin/Coupons";
 import Analytics from "./pages/admin/Analytics";
 import Settings from "./pages/admin/Settings";
+import Reports from "./pages/admin/Reports";
+import Notifications from "./pages/admin/Notifications";
+import AuditLogs from "./pages/admin/AuditLogs";
+import RolesPermissions from "./pages/admin/RolesPermissions";
+import RevenueAnalytics from "./pages/admin/RevenueAnalytics";
+import SecurityDashboard from "./pages/admin/SecurityDashboard";
 
 import MerchantDashboard from "./pages/merchant/MerchantDashboard";
 import Products from "./pages/merchant/Products";
@@ -34,6 +40,8 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+
+          {/* Admin Routes */}
           <Route path="/admin" element={
             <ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>
           }>
@@ -45,8 +53,16 @@ export default function App() {
             <Route path="payments" element={<Payments />} />
             <Route path="coupons" element={<Coupons />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route path="revenue" element={<RevenueAnalytics />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="notifications" element={<Notifications />} />
+            <Route path="audit-logs" element={<AuditLogs />} />
+            <Route path="roles" element={<RolesPermissions />} />
+            <Route path="security" element={<SecurityDashboard />} />
             <Route path="settings" element={<Settings />} />
           </Route>
+
+          {/* Merchant Routes */}
           <Route path="/merchant" element={
             <ProtectedRoute role="merchant"><MerchantLayout /></ProtectedRoute>
           }>
@@ -56,6 +72,7 @@ export default function App() {
             <Route path="sales" element={<SalesReport />} />
             <Route path="settlements" element={<Settlements />} />
           </Route>
+
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </BrowserRouter>

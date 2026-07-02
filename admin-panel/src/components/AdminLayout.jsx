@@ -12,6 +12,12 @@ const adminLinks = [
   { to: "/admin/payments", label: "Payments", icon: "💳" },
   { to: "/admin/coupons", label: "Coupons", icon: "🎟️" },
   { to: "/admin/analytics", label: "Analytics", icon: "📊" },
+  { to: "/admin/revenue", label: "Revenue Analytics", icon: "💰" },
+  { to: "/admin/reports", label: "Reports", icon: "📋" },
+  { to: "/admin/notifications", label: "Notifications", icon: "🔔" },
+  { to: "/admin/audit-logs", label: "Audit Logs", icon: "📝" },
+  { to: "/admin/roles", label: "Roles & Permissions", icon: "🔐" },
+  { to: "/admin/security", label: "Security", icon: "🛡️" },
   { to: "/admin/settings", label: "Settings", icon: "⚙️" },
 ];
 
