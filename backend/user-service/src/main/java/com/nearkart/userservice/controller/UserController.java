@@ -1,5 +1,6 @@
 package com.nearkart.userservice.controller;
 
+import com.nearkart.userservice.dto.AssignRoleRequest;
 import com.nearkart.userservice.dto.ChangePasswordRequest;
 import com.nearkart.userservice.dto.UpdateProfileRequest;
 import com.nearkart.userservice.dto.UserResponse;
@@ -43,18 +44,18 @@ public class UserController {
 
     @PutMapping("/me/change-password")
     @Operation(summary = "Change user password")
-    public ResponseEntity<String> changePassword(
+    public ResponseEntity<Void> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(userDetails.getUsername(), request);
-        return ResponseEntity.ok("Password changed successfully");
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/me")
     @Operation(summary = "Deactivate own account")
-    public ResponseEntity<String> deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
         userService.deleteAccount(userDetails.getUsername());
-        return ResponseEntity.ok("Account deactivated successfully");
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping
@@ -77,16 +78,25 @@ public class UserController {
     @PutMapping("/{id}/deactivate")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Admin: Deactivate user")
-    public ResponseEntity<String> deactivateUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deactivateUser(@PathVariable Long id) {
         userService.deactivateUser(id);
-        return ResponseEntity.ok("User deactivated");
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}/activate")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Admin: Activate user")
-    public ResponseEntity<String> activateUser(@PathVariable Long id) {
+    public ResponseEntity<Void> activateUser(@PathVariable Long id) {
         userService.activateUser(id);
-        return ResponseEntity.ok("User activated");
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Admin: Assign a role to a user")
+    public ResponseEntity<UserResponse> assignRole(
+            @PathVariable Long id,
+            @Valid @RequestBody AssignRoleRequest request) {
+        return ResponseEntity.ok(userService.assignRole(id, request));
     }
 }
