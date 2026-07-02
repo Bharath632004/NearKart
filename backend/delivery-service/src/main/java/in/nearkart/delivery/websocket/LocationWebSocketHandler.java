@@ -10,6 +10,7 @@ import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
@@ -20,7 +21,7 @@ public class LocationWebSocketHandler extends TextWebSocketHandler {
     private final LiveLocationService liveLocationService;
     private final ObjectMapper objectMapper;
 
-    // partnerId -> WebSocketSession
+    // partnerId (UUID string) -> WebSocketSession
     private static final Map<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
 
     @Override
@@ -32,9 +33,10 @@ public class LocationWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        String partnerId = getPartnerId(session);
+        String partnerIdStr = getPartnerId(session);
         UpdateLocationRequest request = objectMapper.readValue(message.getPayload(), UpdateLocationRequest.class);
-        liveLocationService.updateLocation(Long.parseLong(partnerId), request);
+        // Fix: parse as UUID instead of Long
+        liveLocationService.updateLocation(UUID.fromString(partnerIdStr), request);
         session.sendMessage(new TextMessage("{\"status\":\"location updated\"}"));
     }
 
