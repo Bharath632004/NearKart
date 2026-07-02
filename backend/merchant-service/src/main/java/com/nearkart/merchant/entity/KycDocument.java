@@ -34,8 +34,15 @@ public class KycDocument {
     private String rejectionReason;
 
     @Column(name = "uploaded_at", nullable = false, updatable = false)
-    private LocalDateTime uploadedAt = LocalDateTime.now();
+    private LocalDateTime uploadedAt;
 
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (uploadedAt == null) {
+            uploadedAt = LocalDateTime.now();
+        }
+    }
 }

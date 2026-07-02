@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -46,14 +47,16 @@ public class MerchantController {
         return ResponseEntity.ok(merchantService.updateMerchantProfile(userId, request));
     }
 
-    @Operation(summary = "Get merchant by ID (admin/internal)")
+    @Operation(summary = "Get merchant by ID (admin only)")
     @GetMapping("/{merchantId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MerchantResponse> getById(@PathVariable UUID merchantId) {
         return ResponseEntity.ok(merchantService.getMerchantById(merchantId));
     }
 
-    @Operation(summary = "Update merchant status (admin)")
+    @Operation(summary = "Update merchant status (admin only)")
     @PatchMapping("/{merchantId}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MerchantResponse> updateStatus(
             @PathVariable UUID merchantId,
             @RequestParam MerchantStatus status) {
@@ -79,8 +82,9 @@ public class MerchantController {
         return ResponseEntity.ok(merchantService.getKycDocuments(userId));
     }
 
-    @Operation(summary = "Verify or reject KYC document (admin)")
+    @Operation(summary = "Verify or reject KYC document (admin only)")
     @PatchMapping("/kyc/{documentId}/verify")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<KycDocumentResponse> verifyKyc(
             @PathVariable UUID documentId,
             @RequestParam boolean approved,

@@ -51,9 +51,12 @@ public class Settlement {
     private LocalDateTime settledAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
-    public enum SettlementStatus {
-        PENDING, PROCESSING, COMPLETED, FAILED
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 }

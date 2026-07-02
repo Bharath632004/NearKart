@@ -57,9 +57,12 @@ public class Promotion {
     private Integer usageCount = 0;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
-    public enum PromoType {
-        PERCENTAGE, FLAT_AMOUNT, FREE_DELIVERY
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 }

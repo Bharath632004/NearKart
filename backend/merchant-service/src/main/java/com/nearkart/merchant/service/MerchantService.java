@@ -7,6 +7,7 @@ import com.nearkart.merchant.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,6 +30,9 @@ public class MerchantService {
     private final SettlementRepository settlementRepository;
     private final S3Service s3Service;
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+
+    @Value("${merchant.kyc.required-docs:2}")
+    private int kycRequiredDocs;
 
     // ─── Merchant Registration ──────────────────────────────────────────────────
 
@@ -88,6 +92,7 @@ public class MerchantService {
     @Transactional
     public KycDocumentResponse uploadKycDocument(UUID userId, MultipartFile file, String documentType) {
         Merchant merchant = findMerchantByUserId(userId);
+        s3Service.validateUpload(file);
         String s3Key = s3Service.uploadKycDocument(file, merchant.getId(), documentType);
         String documentUrl = s3Service.getPresignedUrl(s3Key);
 
@@ -123,8 +128,8 @@ public class MerchantService {
         KycDocument saved = kycDocumentRepository.save(doc);
 
         Merchant merchant = doc.getMerchant();
-        long totalDocs = kycDocumentRepository.countByMerchantIdAndVerified(merchant.getId(), true);
-        if (totalDocs >= 2) {
+        long verifiedDocs = kycDocumentRepository.countByMerchantIdAndVerified(merchant.getId(), true);
+        if (verifiedDocs >= kycRequiredDocs) {
             merchant.setStatus(MerchantStatus.ACTIVE);
             merchantRepository.save(merchant);
         }
@@ -206,7 +211,7 @@ public class MerchantService {
         Merchant merchant = findMerchantByUserId(userId);
         Shop shop = shopRepository.findByIdAndMerchantId(shopId, merchant.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
-
+        s3Service.validateUpload(file);
         String s3Key = s3Service.uploadShopImage(file, shopId, imageType);
         String imageUrl = s3Service.getPresignedUrl(s3Key);
 
@@ -326,6 +331,7 @@ public class MerchantService {
 
         BigDecimal settled = settlementRepository.getTotalSettledAmountByMerchant(merchantId);
         BigDecimal pending = settlementRepository.getPendingSettlementAmountByMerchant(merchantId);
+        long totalOrders = settlementRepository.getTotalOrdersByMerchant(merchantId);
 
         return AnalyticsSummaryResponse.builder()
                 .totalShops(shops.size())
@@ -333,7 +339,7 @@ public class MerchantService {
                 .pendingSettlement(pending)
                 .completedSettlement(settled)
                 .activePromotions(activePromos)
-                .totalOrders(0L)
+                .totalOrders(totalOrders)
                 .build();
     }
 

@@ -1,5 +1,6 @@
 package com.nearkart.merchant.service;
 
+import com.nearkart.merchant.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.IOException;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -17,10 +19,33 @@ import java.util.UUID;
 @Slf4j
 public class S3Service {
 
+    private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/webp", "application/pdf"
+    );
+
     private final S3Client s3Client;
 
     @Value("${aws.s3.bucket-name}")
     private String bucketName;
+
+    @Value("${aws.s3.max-file-size-mb:10}")
+    private long maxFileSizeMb;
+
+    public void validateUpload(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("File must not be empty");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType)) {
+            throw new BusinessException(
+                    "Invalid file type '" + contentType + "'. Allowed: JPEG, PNG, WEBP, PDF");
+        }
+        long maxBytes = maxFileSizeMb * 1024 * 1024;
+        if (file.getSize() > maxBytes) {
+            throw new BusinessException(
+                    "File size exceeds maximum allowed " + maxFileSizeMb + " MB");
+        }
+    }
 
     public String uploadKycDocument(MultipartFile file, UUID merchantId, String documentType) {
         String key = String.format("kyc/%s/%s/%s-%s",
