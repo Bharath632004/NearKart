@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import API from "../../api/axios";
 import { SkeletonTable } from "../../components/Skeleton";
 import Toast from "../../components/Toast";
@@ -82,22 +82,8 @@ const MOCK_ORDERS = [
 ];
 
 const MOCK_PARTNERS = ["Arun Kumar", "Ramu Reddy", "Vijay S"];
-const STATUS_LIST = [
-  "pending",
-  "confirmed",
-  "out_for_delivery",
-  "delivered",
-  "cancelled",
-];
+const STATUS_LIST = ["pending", "confirmed", "out_for_delivery", "delivered", "cancelled"];
 const PAGE_SIZE = 5;
-
-const STATUS_COLORS = {
-  pending: "bg-yellow-100 text-yellow-700",
-  confirmed: "bg-blue-100 text-blue-700",
-  out_for_delivery: "bg-indigo-100 text-indigo-700",
-  delivered: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
-};
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
@@ -115,7 +101,7 @@ export default function Orders() {
     setLoading(true);
     try {
       const res = await API.get("/admin/orders");
-      setOrders(res.data);
+      setOrders(Array.isArray(res.data) ? res.data : []);
     } catch {
       setOrders(MOCK_ORDERS);
     } finally {
@@ -129,24 +115,34 @@ export default function Orders() {
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
-  const filtered = orders.filter((o) => {
-    const matchFilter = filter === "all" || o.status === filter;
-    const matchSearch =
-      o.customer.toLowerCase().includes(search.toLowerCase()) ||
-      o.merchant.toLowerCase().includes(search.toLowerCase());
-    return matchFilter && matchSearch;
-  });
+  const filtered = useMemo(() => {
+    return orders.filter((o) => {
+      const matchFilter = filter === "all" || o.status === filter;
+      const customer = (o.customer || "").toLowerCase();
+      const merchant = (o.merchant || "").toLowerCase();
+      const q = search.toLowerCase();
+      const matchSearch = customer.includes(q) || merchant.includes(q);
+      return matchFilter && matchSearch;
+    });
+  }, [orders, filter, search]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const updateStatus = async (id, status) => {
     try {
       await API.patch(`/admin/orders/${id}/status`, { status });
     } catch {}
-    setOrders((prev) =>
-      prev.map((o) => (o._id === id ? { ...o, status } : o))
-    );
+    setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, status } : o)));
     showToast(`Order status updated to ${status}`, "success");
   };
 
@@ -171,9 +167,7 @@ export default function Orders() {
     try {
       await API.post(`/admin/orders/${id}/refund`);
     } catch {}
-    setOrders((prev) =>
-      prev.map((o) => (o._id === id ? { ...o, refund: true } : o))
-    );
+    setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, refund: true } : o)));
     showToast("Refund approved", "success");
     setRefundModal(null);
   };
@@ -182,9 +176,7 @@ export default function Orders() {
     try {
       await API.post(`/admin/orders/${id}/escalate`);
     } catch {}
-    setOrders((prev) =>
-      prev.map((o) => (o._id === id ? { ...o, escalated: true } : o))
-    );
+    setOrders((prev) => prev.map((o) => (o._id === id ? { ...o, escalated: true } : o)));
     showToast("Order escalated", "warning");
   };
 
@@ -196,33 +188,30 @@ export default function Orders() {
       `Merchant: ${order.merchant}`,
       `Date: ${order.date}`,
       "---",
-      ...(order.items || []).map(
-        (i) => `${i.name} x${i.qty} = ₹${i.price}`
-      ),
+      ...(order.items || []).map((i) => `${i.name} x${i.qty} = ₹${i.price}`),
       "---",
       `Total: ₹${order.amount}`,
     ].join("\n");
-    const blob = new Blob([lines], { type: "text/plain" });
+
+    const blob = new Blob([lines], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `invoice_${order._id}.txt`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
     showToast("Invoice downloaded", "success");
   };
 
   return (
     <div className="space-y-5">
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Order Management
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800">Order Management</h2>
           <span className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-200 animate-pulse">
             ● Live
           </span>
@@ -230,31 +219,26 @@ export default function Orders() {
         <ExportButton data={filtered} filename="orders" label="Export CSV" />
       </div>
 
-      {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        {["all", "pending", "confirmed", "out_for_delivery", "delivered"].map(
-          (s) => (
-            <button
-              key={s}
-              onClick={() => {
-                setFilter(s);
-                setPage(1);
-              }}
-              className={`rounded-xl p-3 text-sm font-semibold border transition ${
-                filter === s
-                  ? "bg-indigo-600 text-white border-indigo-600"
-                  : "bg-white hover:bg-gray-50 text-gray-600"
-              }`}
-            >
-              {s === "all" ? "All Orders" : s.replace(/_/g, " ")}
-              <span className="block text-lg font-bold">
-                {s === "all"
-                  ? orders.length
-                  : orders.filter((o) => o.status === s).length}
-              </span>
-            </button>
-          )
-        )}
+        {["all", "pending", "confirmed", "out_for_delivery", "delivered"].map((s) => (
+          <button
+            key={s}
+            onClick={() => {
+              setFilter(s);
+              setPage(1);
+            }}
+            className={`rounded-xl p-3 text-sm font-semibold border transition ${
+              filter === s
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-white hover:bg-gray-50 text-gray-600"
+            }`}
+          >
+            {s === "all" ? "All Orders" : s.replace(/_/g, " ")}
+            <span className="block text-lg font-bold">
+              {s === "all" ? orders.length : orders.filter((o) => o.status === s).length}
+            </span>
+          </button>
+        ))}
       </div>
 
       <div className="bg-white rounded-xl shadow p-5">
@@ -263,10 +247,7 @@ export default function Orders() {
             className="border border-gray-300 rounded-lg px-4 py-2 text-sm w-full sm:w-72 focus:ring-2 focus:ring-indigo-500"
             placeholder="Search customer or merchant..."
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
@@ -274,22 +255,14 @@ export default function Orders() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 text-xs uppercase">
               <tr>
-                {[
-                  "Order ID",
-                  "Customer",
-                  "Merchant",
-                  "Partner",
-                  "Amount",
-                  "Date",
-                  "Status",
-                  "Actions",
-                ].map((h) => (
+                {["Order ID", "Customer", "Merchant", "Partner", "Amount", "Date", "Status", "Actions"].map((h) => (
                   <th key={h} className="px-4 py-3 text-left">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
+
             {loading ? (
               <SkeletonTable rows={5} cols={8} />
             ) : (
@@ -297,10 +270,7 @@ export default function Orders() {
                 {paginated.map((o) => (
                   <tr
                     key={o._id}
-                    className={
-                      "border-t hover:bg-gray-50" +
-                      (o.escalated ? " bg-red-50" : "")
-                    }
+                    className={"border-t hover:bg-gray-50" + (o.escalated ? " bg-red-50" : "")}
                   >
                     <td
                       className="px-4 py-3 font-mono text-xs cursor-pointer text-indigo-600 hover:underline"
@@ -311,32 +281,15 @@ export default function Orders() {
                     <td className="px-4 py-3 font-medium">{o.customer}</td>
                     <td className="px-4 py-3">{o.merchant}</td>
                     <td className="px-4 py-3">
-                      {o.deliveryPartner || (
-                        <span className="text-gray-400 italic">
-                          Unassigned
-                        </span>
-                      )}
+                      {o.deliveryPartner || <span className="text-gray-400 italic">Unassigned</span>}
                     </td>
-                    <td className="px-4 py-3 font-semibold">
-                      ₹{o.amount}
-                    </td>
+                    <td className="px-4 py-3 font-semibold">₹{o.amount}</td>
                     <td className="px-4 py-3 text-gray-500">{o.date}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col gap-1">
-                        <Badge
-                          label={o.status.replace(/_/g, " ")}
-                          type={o.status}
-                        />
-                        {o.escalated && (
-                          <span className="text-xs text-red-600 font-semibold">
-                            🚨 Escalated
-                          </span>
-                        )}
-                        {o.refund && (
-                          <span className="text-xs text-green-600 font-semibold">
-                            ↩ Refunded
-                          </span>
-                        )}
+                        <Badge label={o.status.replace(/_/g, " ")} type={o.status} />
+                        {o.escalated && <span className="text-xs text-red-600 font-semibold">🚨 Escalated</span>}
+                        {o.refund && <span className="text-xs text-green-600 font-semibold">↩ Refunded</span>}
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -344,9 +297,7 @@ export default function Orders() {
                         <select
                           className="border rounded px-1 py-1 text-xs"
                           value={o.status}
-                          onChange={(e) =>
-                            updateStatus(o._id, e.target.value)
-                          }
+                          onChange={(e) => updateStatus(o._id, e.target.value)}
                         >
                           {STATUS_LIST.map((s) => (
                             <option key={s} value={s}>
@@ -354,6 +305,7 @@ export default function Orders() {
                             </option>
                           ))}
                         </select>
+
                         <button
                           onClick={() => {
                             setAssignModal(o);
@@ -363,18 +315,21 @@ export default function Orders() {
                         >
                           Assign
                         </button>
+
                         <button
                           onClick={() => setRefundModal(o)}
                           className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs"
                         >
                           Refund
                         </button>
+
                         <button
                           onClick={() => generateInvoice(o)}
                           className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
                         >
                           Invoice
                         </button>
+
                         {!o.escalated && (
                           <button
                             onClick={() => escalate(o._id)}
@@ -387,12 +342,10 @@ export default function Orders() {
                     </td>
                   </tr>
                 ))}
+
                 {paginated.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={8}
-                      className="text-center py-8 text-gray-400"
-                    >
+                    <td colSpan={8} className="text-center py-8 text-gray-400">
                       No orders found.
                     </td>
                   </tr>
@@ -401,14 +354,10 @@ export default function Orders() {
             )}
           </table>
         </div>
-        <Pagination
-          page={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
+
+        <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
-      {/* Order Timeline Modal */}
       <Modal
         open={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
@@ -428,19 +377,15 @@ export default function Orders() {
                 </div>
               ))}
             </div>
+
             <div className="border-t pt-4">
               <p className="text-sm font-semibold mb-2">Items</p>
               {(selectedOrder.items || []).map((item, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between text-sm py-1"
-                >
+                <div key={i} className="flex justify-between text-sm py-1">
                   <span>
                     {item.name} x{item.qty}
                   </span>
-                  <span className="font-semibold">
-                    ₹{item.price}
-                  </span>
+                  <span className="font-semibold">₹{item.price}</span>
                 </div>
               ))}
               <div className="flex justify-between font-bold text-sm border-t mt-2 pt-2">
@@ -452,12 +397,7 @@ export default function Orders() {
         )}
       </Modal>
 
-      {/* Assign Modal */}
-      <Modal
-        open={!!assignModal}
-        onClose={() => setAssignModal(null)}
-        title="Assign Delivery Partner"
-      >
+      <Modal open={!!assignModal} onClose={() => setAssignModal(null)} title="Assign Delivery Partner">
         <div className="space-y-4">
           <select
             className="border border-gray-300 rounded-lg px-3 py-2 w-full text-sm"
@@ -488,21 +428,14 @@ export default function Orders() {
         </div>
       </Modal>
 
-      {/* Refund Modal */}
-      <Modal
-        open={!!refundModal}
-        onClose={() => setRefundModal(null)}
-        title="Approve Refund"
-      >
+      <Modal open={!!refundModal} onClose={() => setRefundModal(null)} title="Approve Refund">
         {refundModal && (
           <div className="space-y-4">
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
               <p className="text-sm text-gray-600">
                 Refund Amount for Order <b>#{refundModal._id}</b>
               </p>
-              <p className="text-3xl font-bold text-yellow-700 mt-1">
-                ₹{refundModal.amount}
-              </p>
+              <p className="text-3xl font-bold text-yellow-700 mt-1">₹{refundModal.amount}</p>
             </div>
             <div className="flex gap-3">
               <button
