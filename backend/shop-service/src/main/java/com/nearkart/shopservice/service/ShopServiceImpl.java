@@ -7,20 +7,32 @@ import com.nearkart.shopservice.model.Shop;
 import com.nearkart.shopservice.model.ShopCategory;
 import com.nearkart.shopservice.repository.ShopRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ShopServiceImpl implements ShopService {
 
     private final ShopRepository shopRepository;
 
     @Override
+    @Transactional
     public ShopResponse createShop(ShopRequest request) {
+        shopRepository.findByMerchantIdAndNameIgnoreCaseAndCity(
+                request.getMerchantId(), request.getName(), request.getCity())
+            .ifPresent(existing -> {
+                throw new IllegalArgumentException(
+                    "Shop '" + request.getName() + "' already exists in " + request.getCity() + " for this merchant");
+            });
+
         Shop shop = Shop.builder()
                 .name(request.getName())
                 .description(request.getDescription())
@@ -36,42 +48,67 @@ public class ShopServiceImpl implements ShopService {
                 .category(request.getCategory())
                 .active(true)
                 .verified(false)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
                 .build();
-        return toResponse(shopRepository.save(shop));
+
+        Shop saved = shopRepository.save(shop);
+        log.info("Shop created: id={}, name={}, merchant={}", saved.getId(), saved.getName(), saved.getMerchantId());
+        return toResponse(saved);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ShopResponse getShopById(Long id) {
-        return toResponse(shopRepository.findById(id)
-                .orElseThrow(() -> new ShopNotFoundException("Shop not found: " + id)));
+        return toResponse(findOrThrow(id));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ShopResponse> getAllShops() {
         return shopRepository.findAll().stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<ShopResponse> getActiveShopsPaged(Pageable pageable) {
+        return shopRepository.findByActiveTrueOrderByCreatedAtDesc(pageable).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ShopResponse> getShopsByMerchant(Long merchantId) {
         return shopRepository.findByMerchantId(merchantId).stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<ShopResponse> getShopsByMerchantPaged(Long merchantId, Pageable pageable) {
+        return shopRepository.findByMerchantId(merchantId, pageable).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ShopResponse> getNearbyShops(double lat, double lng, double radiusKm) {
         return shopRepository.findNearbyShops(lat, lng, radiusKm).stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override
-    public List<ShopResponse> searchShops(String keyword) {
-        return shopRepository.findByNameContainingIgnoreCase(keyword).stream().map(this::toResponse).collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public List<ShopResponse> getNearbyShopsByCategory(double lat, double lng, double radiusKm, ShopCategory category) {
+        return shopRepository.findNearbyShopsByCategory(lat, lng, radiusKm, category.name())
+                .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ShopResponse> searchShops(String keyword) {
+        return shopRepository.findByNameContainingIgnoreCaseAndActiveTrue(keyword)
+                .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
     public ShopResponse updateShop(Long id, ShopRequest request) {
-        Shop shop = shopRepository.findById(id)
-                .orElseThrow(() -> new ShopNotFoundException("Shop not found: " + id));
+        Shop shop = findOrThrow(id);
         shop.setName(request.getName());
         shop.setDescription(request.getDescription());
         shop.setImageUrl(request.getImageUrl());
@@ -83,52 +120,67 @@ public class ShopServiceImpl implements ShopService {
         shop.setPhone(request.getPhone());
         shop.setEmail(request.getEmail());
         shop.setCategory(request.getCategory());
-        shop.setUpdatedAt(LocalDateTime.now());
+        log.info("Shop updated: id={}", id);
         return toResponse(shopRepository.save(shop));
     }
 
     @Override
+    @Transactional
     public ShopResponse toggleShopActive(Long id) {
-        Shop shop = shopRepository.findById(id)
-                .orElseThrow(() -> new ShopNotFoundException("Shop not found: " + id));
+        Shop shop = findOrThrow(id);
         shop.setActive(!shop.isActive());
-        shop.setUpdatedAt(LocalDateTime.now());
+        log.info("Shop {} toggled to active={}", id, shop.isActive());
         return toResponse(shopRepository.save(shop));
     }
 
     @Override
+    @Transactional
     public ShopResponse verifyShop(Long id) {
-        Shop shop = shopRepository.findById(id)
-                .orElseThrow(() -> new ShopNotFoundException("Shop not found: " + id));
+        Shop shop = findOrThrow(id);
         shop.setVerified(true);
-        shop.setUpdatedAt(LocalDateTime.now());
+        log.info("Shop {} verified", id);
         return toResponse(shopRepository.save(shop));
     }
 
     @Override
+    @Transactional
     public void deleteShop(Long id) {
-        if (!shopRepository.existsById(id)) {
-            throw new ShopNotFoundException("Shop not found: " + id);
-        }
-        shopRepository.deleteById(id);
+        Shop shop = findOrThrow(id);
+        shop.setActive(false);
+        shopRepository.save(shop);
+        log.info("Shop {} soft-deleted (deactivated)", id);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ShopResponse> getShopsByCity(String city) {
         return shopRepository.findByCityAndActiveTrue(city)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ShopResponse> getShopsByCategory(ShopCategory category) {
-        return shopRepository.findByCategory(category)
+        return shopRepository.findByCategoryAndActiveTrue(category)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ShopResponse> getActiveShops() {
         return shopRepository.findByActiveTrue()
                 .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countShopsByMerchant(Long merchantId) {
+        return shopRepository.countByMerchantId(merchantId);
+    }
+
+    private Shop findOrThrow(Long id) {
+        return shopRepository.findById(id)
+                .orElseThrow(() -> new ShopNotFoundException("Shop not found: " + id));
     }
 
     private ShopResponse toResponse(Shop s) {

@@ -1,13 +1,14 @@
 package com.nearkart.shopservice.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "shops")
+@Table(name = "shops", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_shop_merchant_name_city", columnNames = {"merchant_id", "name", "city"})
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,24 +19,29 @@ public class Shop {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
+    @Column(nullable = false)
     private String name;
 
     private String description;
 
     private String imageUrl;
 
-    // References user-service merchantId
+    @Column(nullable = false)
     private Long merchantId;
 
+    @Column(nullable = false)
     private String address;
+
     private String city;
     private String pincode;
 
     private Double latitude;
     private Double longitude;
 
+    @Builder.Default
     private boolean active = true;
+
+    @Builder.Default
     private boolean verified = false;
 
     private String phone;
@@ -44,6 +50,19 @@ public class Shop {
     @Enumerated(EnumType.STRING)
     private ShopCategory category;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
