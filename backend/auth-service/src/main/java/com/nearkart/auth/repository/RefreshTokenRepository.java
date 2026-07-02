@@ -12,13 +12,10 @@ import java.util.UUID;
 
 @Repository
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
+
     Optional<RefreshToken> findByToken(String token);
 
     @Modifying
-    @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.user = :user")
+    @Query("UPDATE RefreshToken rt SET rt.revoked = true WHERE rt.user = :user AND rt.revoked = false")
     void revokeAllByUser(User user);
-
-    @Modifying
-    @Query("DELETE FROM RefreshToken rt WHERE rt.expiresAt < CURRENT_TIMESTAMP OR rt.revoked = true")
-    void deleteExpiredAndRevoked();
 }
